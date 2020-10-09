@@ -43,6 +43,9 @@ typedef struct{
 } virt_addr_t;
 
 /* backing store map entry */
+#define MAX_NUM_BS 8
+#define MAX_BS_PAGES 256
+
 typedef struct{
   int bs_status;			/* MAPPED or UNMAPPED		*/
   int bs_pid;				/* process id using this slot   */
@@ -62,8 +65,8 @@ typedef struct{
   //todo
 }fr_map_t;
 
-extern bs_map_t bsm_tab[];
-extern fr_map_t frm_tab[];
+extern bs_map_t bsm_tab[]; /* backing store map */
+extern fr_map_t frm_tab[]; /* inverted page table */
 /* Prototypes for required API calls */
 SYSCALL xmmap(int, bsd_t, int);
 SYSCALL xunmap(int);
@@ -74,6 +77,12 @@ int get_bs(bsd_t, unsigned int);
 SYSCALL release_bs(bsd_t);
 SYSCALL read_bs(char *, bsd_t, int);
 SYSCALL write_bs(char *, bsd_t, int);
+SYSCALL init_bsm();
+SYSCALL get_bsm(int*);
+SYSCALL free_bsm(int);
+SYSCALL bsm_lookup(int, long, int*, int*);
+SYSCALL bsm_map(int, int, int, int);
+SYSCALL bsm_unmap(int, int, int);
 
 #define NBPG		4096	/* number of bytes per page	*/
 #define FRAME0		1024	/* zero-th frame		*/
