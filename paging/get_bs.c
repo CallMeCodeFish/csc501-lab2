@@ -18,18 +18,8 @@ int get_bs(bsd_t bs_id, unsigned int npages) {
         return SYSERR;
     }
 
-    int pid = getpid;
-
     if (bsm_tab[bs_id].bs_status == BSM_MAPPED) {
-        if (bsm_tab[bs_id].bs_pid != pid) {
-            restore(ps);
-            return SYSERR;
-        }
         npages = bsm_tab[bs_id].bs_npages;
-    } else {
-        bsm_tab[bs_id].bs_status = BSM_MAPPED;
-        bsm_tab[bs_id].bs_pid = pid;
-        bsm_tab[bs_id].bs_npages = npages;
     }
 
     restore(ps);

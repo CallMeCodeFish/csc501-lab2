@@ -55,6 +55,9 @@ typedef struct{
 } bs_map_t;
 
 /* inversed page table entry*/
+#define MAX_FRM_AGE 255 // max frame age in Aging replacement policy
+int debug_option; // debug option for grading
+
 typedef struct{
   int fr_status;			/* MAPPED or UNMAPPED		*/
   int fr_pid;				/* process id using this frame  */
@@ -62,7 +65,12 @@ typedef struct{
   int fr_refcnt;			/* reference count		*/
   int fr_type;				/* FR_DIR, FR_TBL, FR_PAGE	*/
   int fr_dirty;
-  //todo
+
+  //self-defined fields
+  fr_map_t *fr_next; // next node in the frame queue
+  int fr_index; // frame index in the inverted page table
+  int fr_age; // used in Aging replacement policy
+
 }fr_map_t;
 
 extern bs_map_t bsm_tab[]; /* backing store map */
@@ -83,6 +91,25 @@ SYSCALL free_bsm(int);
 SYSCALL bsm_lookup(int, long, int*, int*);
 SYSCALL bsm_map(int, int, int, int);
 SYSCALL bsm_unmap(int, int, int);
+
+/* functions related to frames */
+SYSCALL init_frm();
+SYSCALL get_frm(int*);
+SYSCALL free_frm(int);
+void init_frm_queue();
+void frm_enqueue(int);
+void frm_remove(int);
+int get_frm_by_SC();
+int get_frm_by_Aging();
+void reset_frm_entry(int);
+pt_t * get_pt_entry(int, int);
+pd_t * get_pd_entry(int, int);
+int get_pt_fr_index(int, int);
+
+/* globel variables related to frames */
+fr_map_t frm_qdummy;
+fr_map_t *frm_qhead;
+fr_map_t *frm_qtail;
 
 #define NBPG		4096	/* number of bytes per page	*/
 #define FRAME0		1024	/* zero-th frame		*/

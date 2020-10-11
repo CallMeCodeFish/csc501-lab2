@@ -7,21 +7,25 @@
 
 bs_map_t bsm_tab[MAX_NUM_BS];
 
+/* reset the fields of a backing store map entry */
+void reset_bsm_entry(int i) {
+    bsm_tab[i].bs_status = BSM_UNMAPPED;
+    bsm_tab[i].bs_pid = -1;
+    bsm_tab[i].bs_sem = 0;
+    bsm_tab[i].bs_npages = 0;
+    bsm_tab[i].bs_vpno = 0;
+}
+
 /*-------------------------------------------------------------------------
  * init_bsm- initialize bsm_tab
  *-------------------------------------------------------------------------
  */
 SYSCALL init_bsm()
 {
-    STATWORD ps;
-    disable(ps);
-
     int i;
     for (i = 0; i < MAX_NUM_BS; ++i) {
-        reset_bsm_entry(bsm_tab[i]);
+        reset_bsm_entry(i);
     }
-
-    restore(ps);
 
     return OK;
 }
@@ -64,7 +68,7 @@ SYSCALL free_bsm(int i)
     }
 
     bs_map_t entry = bsm_tab[i];
-    if (entry.bs_status == BSM_MAPPED) {
+    if (entry.bs_status == BSM_UNMAPPED) {
         restore(ps);
         return SYSERR;
     }
@@ -117,7 +121,7 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
         return SYSERR;
     }
 
-    if (npages <= 0 || npages > bsm_tab[source].bs_npages) {
+    if (npages <= 0 || npages > MAX_BS_PAGES) {
         restore(ps);
         return SYSERR;
     }
@@ -130,6 +134,7 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
     bsm_tab[source].bs_pid = pid;
     bsm_tab[source].bs_status = BSM_MAPPED;
     bsm_tab[source].bs_vpno = vpno;
+    bsm_tab[source].bs_npages = npages;
 
     restore(ps);
     return OK;
@@ -144,34 +149,43 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
 SYSCALL bsm_unmap(int pid, int vpno, int flag)
 {
     STATWORD ps;
-    disable(ps);
+    disable(ps);  
 
-    int min_vpno = 4096;
-    int max_vpno = 0xffffff;
-
+    // check validation
     if (vpno < min_vpno || vpno > max_vpno) {
         restore(ps);
         return SYSERR;
     }
 
+    int min_vpno = 4096;
+    int max_vpno = 0xffffff;
+
+    // find the index of the backing store
     int i;
     for (i = 0; i < MAX_NUM_BS; ++i) {
         if (bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno == vpno && bsm_tab[i].bs_status == BSM_MAPPED) {
-            bsm_tab[i].bs_status = BSM_UNMAPPED;
-            restore(ps);
-            return OK;
+            break;
         }
     }
 
-    restore(ps);
-    return SYSERR;
-}
+    if (i == MAX_NUM_BS) {
+        // cannot find the backing store
+        restore(ps);
+        return SYSERR;
+    }
 
-/* reset the fields of a backing store map entry */
-void reset_bsm_entry(bs_map_t entry) {
-    entry.bs_status = BSM_UNMAPPED;
-    entry.bs_pid = -1;
-    entry.bs_sem = 0;
-    entry.bs_npages = 0;
-    entry.bs_vpno = 0;
+    // free the corresponding frame in the physical memory
+    int j;
+    for (j = 0; j < NFRAMES; ++j) {
+        if (frm_tab[j].fr_status == FRM_MAPPED && frm_tab[j].fr_type == FR_PAGE && frm_tab[j].fr_pid == pid
+            && bsm_tab[i].bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j] < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
+                free_frm(j);
+            }
+    }
+
+    // delete mapping in backing store map
+    reset_bsm_entry(i);
+
+    restore(ps);
+    return OK;
 }
