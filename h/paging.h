@@ -106,6 +106,9 @@ pt_t * get_pt_entry(int, int);
 pd_t * get_pd_entry(int, int);
 int get_pt_fr_index(int, int);
 
+/* allocate page directory for a process */
+void allocate_page_directory(int);
+
 /* globel variables related to frames */
 fr_map_t frm_qdummy;
 fr_map_t *frm_qhead;

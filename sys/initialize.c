@@ -210,6 +210,62 @@ sysinit()
 
 	rdytail = 1 + (rdyhead=newqueue());/* initialize ready list */
 
+	//seg segments
+	setsegs();
+
+	// initialize debug option
+	debug_option = 0;
+
+	// initialize backing store map
+	init_bsm();
+
+	// initialize inverted page table
+	init_frm();
+
+	// initialize the frame queue
+	init_frm_queue();
+
+	// create the first four global page tables
+	for (i = 0; i < 4; ++i) {
+		int frm_index;
+		// get a free frame
+		get_frm(&frm_index);
+
+		frm_tab[frm_index].fr_status = FRM_MAPPED;
+		frm_tab[frm_index].fr_type = FR_TBL;
+		frm_tab[frm_index].fr_refcnt = 1024;
+
+		// set page table entries on the page table
+		pt_t *pt_entry;
+		pt_entry = (pt_t *) ((FRAME0 + frm_index) * NBPG);
+
+		int j;
+		for (j = 0; j < NFRAMES; ++j) {
+			pt_entry[j]->pt_pres = 1;
+			pt_entry[j]->pt_write = 1;
+			pt_entry[j]->pt_user = 0;
+			pt_entry[j]->pt_pwt = 0;
+			pt_entry[j]->pt_pcd = 0;
+			pt_entry[j]->pt_acc = 0;
+			pt_entry[j]->pt_dirty = 0;
+			pt_entry[j]->pt_mbz = 0;
+			pt_entry[j]->pt_global = 0;
+			pt_entry[j]->pt_avail = 0;
+			pt_entry[j]->pt_base = i * NFRAMES + j;
+		}
+	}
+
+	// allocate page directory for the NULL process
+	allocate_page_directory(NULLPROC);
+
+	// set the ISR
+	set_evec(14, (u_long) pfintr);
+
+	// enable paging
+	enable_paging();
+
+	// write CR3 register for NULL user
+	write_cr3(proctab[NULLPROC].pdbr);
 
 	return(OK);
 }

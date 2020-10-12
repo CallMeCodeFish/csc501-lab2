@@ -276,3 +276,27 @@ int get_pt_fr_index(int pid, int vpno) {
 
     return pd_entry->pd_base - FRAME0;
 }
+
+void allocate_page_directory(int pid) {
+    // get a free frame
+    int frm_index;
+    get_frm(&frm_index); // possibly return SYSERR
+
+    frm_tab[frm_index].fr_status = FRM_MAPPED;
+    frm_tab[frm_index].fr_pid = pid;
+    frm_tab[frm_index].fr_type = FR_DIR;
+
+    // bind the page to the pdbr of the process
+    proctab[pid].pdbr = (FRAME0 + frm_index) * NBPG;
+
+    // bind the first four page table to the page directory
+    pd_t *pd_entry;
+    pd_entry = (pd_t *) proctab[pid].pdbr;
+
+    int i;
+    for (i = 0; i < 4; ++i) {
+        pd_entry[i].pd_write = 1;
+        pd_entry[i].pd_pres = 1;
+        pd_entry[i].pd_base = FRAME0 + i;
+    }
+}
