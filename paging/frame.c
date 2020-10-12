@@ -4,7 +4,6 @@
 #include <proc.h>
 #include <paging.h>
 
-fr_map_t frm_tab[NFRAMES];
 
 /*-------------------------------------------------------------------------
  * init_frm - initialize frm_tab
@@ -65,10 +64,6 @@ SYSCALL get_frm(int* avail)
  */
 SYSCALL free_frm(int i)
 {
-    // remove the FR_PAGE page from the frame queue
-    frm_remove(i);
-    reset_frm_entry(i);
-
     pt_t *pt_entry = get_pt_entry(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
     pt_entry->pt_pres = 0;
     
@@ -77,7 +72,7 @@ SYSCALL free_frm(int i)
         // revoke the frame containing the page table
         frm_remove(pt_fr_index);
         reset_frm_entry(pt_fr_index);
-        pd_t * pd_entry = get_pd_entry(q->fr_pid, q->fr_vpno);
+        pd_t * pd_entry = get_pd_entry(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
         pd_entry->pd_pres = 0;
     }
 
@@ -88,6 +83,10 @@ SYSCALL free_frm(int i)
         bsm_lookup(frm_tab[i].fr_pid, frm_tab[i].fr_vpno * NBPG, &store, &pageth);
         write_bs((FRAME0 + i) * NBPG, store, pageth);
     }
+
+    // remove the FR_PAGE page from the frame queue
+    frm_remove(i);
+    reset_frm_entry(i);
 
     return OK;
 }
@@ -130,9 +129,9 @@ void frm_enqueue(int i) {
 // remove the i-th frame from the queue (used by SC replacement policy)
 void frm_remove(int i) {
     fr_map_t *p = frm_qhead;
-    fr_map_t *q = p->fr_index;
+    fr_map_t *q = p->fr_next;
 
-    while (1) {
+    while (p->fr_next != NULL) {
         if (q->fr_index == i) {
             break;
         }
@@ -140,9 +139,11 @@ void frm_remove(int i) {
         q = q->fr_next;
     }
 
-    p->fr_next = q->fr_next;
-    if (q == frm_qtail) {
-        frm_qtail = p;
+    if (q != NULL) {
+        p->fr_next = q->fr_next;
+        if (q == frm_qtail) {
+            frm_qtail = p;
+        }
     }
 }
 
@@ -265,7 +266,7 @@ pd_t * get_pd_entry(int pid, int vpno) {
     int pdbr = proctab[pid].pdbr;
 
     pd_t *pd_entry;
-    pd_entry = (pd_t*) (pdbr + pd_offset * sizeof(pd_t));
+    pd_entry = (pd_t *) (pdbr + pd_offset * sizeof(pd_t));
 
     return pd_entry;
 }
@@ -277,6 +278,7 @@ int get_pt_fr_index(int pid, int vpno) {
     return pd_entry->pd_base - FRAME0;
 }
 
+// allocate a page directory for a newly created process
 void allocate_page_directory(int pid) {
     // get a free frame
     int frm_index;

@@ -58,7 +58,7 @@ typedef struct{
 #define MAX_FRM_AGE 255 // max frame age in Aging replacement policy
 int debug_option; // debug option for grading
 
-typedef struct{
+typedef struct __fr_map_t{
   int fr_status;			/* MAPPED or UNMAPPED		*/
   int fr_pid;				/* process id using this frame  */
   int fr_vpno;				/* corresponding virtual page no*/
@@ -67,7 +67,7 @@ typedef struct{
   int fr_dirty;
 
   //self-defined fields
-  fr_map_t *fr_next; // next node in the frame queue
+  struct __fr_map_t *fr_next; // next node in the frame queue
   int fr_index; // frame index in the inverted page table
   int fr_age; // used in Aging replacement policy
 
@@ -77,7 +77,7 @@ extern bs_map_t bsm_tab[]; /* backing store map */
 extern fr_map_t frm_tab[]; /* inverted page table */
 /* Prototypes for required API calls */
 SYSCALL xmmap(int, bsd_t, int);
-SYSCALL xunmap(int);
+SYSCALL xmunmap(int);
 
 /* given calls for dealing with backing store */
 

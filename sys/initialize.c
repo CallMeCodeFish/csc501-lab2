@@ -49,6 +49,9 @@ int	console_dev;		/* the console device			*/
 /*  added for the demand paging */
 int page_replace_policy = SC;
 
+fr_map_t frm_tab[NFRAMES];
+bs_map_t bsm_tab[MAX_NUM_BS];
+
 /************************************************************************/
 /***				NOTE:				      ***/
 /***								      ***/
@@ -77,6 +80,8 @@ nulluser()				/* babysit CPU when no one is home */
 
 	kprintf("system running up!\n");
 	sysinit();
+
+	// kprintf("============================================================");
 
 	enable();		/* enable interrupts */
 
@@ -225,6 +230,9 @@ sysinit()
 	// initialize the frame queue
 	init_frm_queue();
 
+	// set the ISR
+	set_evec(14, (u_long) pfintr);
+
 	// create the first four global page tables
 	for (i = 0; i < 4; ++i) {
 		int frm_index;
@@ -234,6 +242,7 @@ sysinit()
 		frm_tab[frm_index].fr_status = FRM_MAPPED;
 		frm_tab[frm_index].fr_type = FR_TBL;
 		frm_tab[frm_index].fr_refcnt = 1024;
+		frm_tab[frm_index].fr_pid = 0;
 
 		// set page table entries on the page table
 		pt_t *pt_entry;
@@ -241,31 +250,28 @@ sysinit()
 
 		int j;
 		for (j = 0; j < NFRAMES; ++j) {
-			pt_entry[j]->pt_pres = 1;
-			pt_entry[j]->pt_write = 1;
-			pt_entry[j]->pt_user = 0;
-			pt_entry[j]->pt_pwt = 0;
-			pt_entry[j]->pt_pcd = 0;
-			pt_entry[j]->pt_acc = 0;
-			pt_entry[j]->pt_dirty = 0;
-			pt_entry[j]->pt_mbz = 0;
-			pt_entry[j]->pt_global = 0;
-			pt_entry[j]->pt_avail = 0;
-			pt_entry[j]->pt_base = i * NFRAMES + j;
+			pt_entry[j].pt_pres = 1;
+			pt_entry[j].pt_write = 1;
+			pt_entry[j].pt_user = 0;
+			pt_entry[j].pt_pwt = 0;
+			pt_entry[j].pt_pcd = 0;
+			pt_entry[j].pt_acc = 0;
+			pt_entry[j].pt_dirty = 0;
+			pt_entry[j].pt_mbz = 0;
+			pt_entry[j].pt_global = 0;
+			pt_entry[j].pt_avail = 0;
+			pt_entry[j].pt_base = i * NFRAMES + j;
 		}
 	}
 
 	// allocate page directory for the NULL process
 	allocate_page_directory(NULLPROC);
 
-	// set the ISR
-	set_evec(14, (u_long) pfintr);
+	// write CR3 register for NULL user
+	write_cr3(proctab[NULLPROC].pdbr);
 
 	// enable paging
 	enable_paging();
-
-	// write CR3 register for NULL user
-	write_cr3(proctab[NULLPROC].pdbr);
 
 	return(OK);
 }

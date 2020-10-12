@@ -19,6 +19,8 @@ WORD	*vgetmem(nbytes)
 
 	int pid = getpid();
 
+	// kprintf("进入vgetmem\n");
+
 	struct	mblock	*p, *q, *leftover, *vmemlist;
 	vmemlist = proctab[pid].vmemlist;
 	

@@ -28,9 +28,10 @@ SYSCALL pfint()
 
     // check if the faulted address is legal
     if (vpno < proctab[pid].vhpno || vpno >= proctab[pid].vhpno + proctab[pid].vhpnpages) {
-        kprintf("Illegal faulted address: %08x\n", a);
+        kprintf("Illegal faulted address: 0x%08x\n", a);
         kill(pid);
         restore(ps);
+        return SYSERR;
     }
 
     unsigned long pdbr = proctab[pid].pdbr;

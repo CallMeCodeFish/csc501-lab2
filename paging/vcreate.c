@@ -120,9 +120,12 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
 	proctab[pid].vhpno = 4096;
 	proctab[pid].vhpnpages = hsize;
 	proctab[pid].vmemlist->mnext = 4096 * NBPG;
-	proctab[pid].vmemlist->mnext->mlen = hsize * NBPG;
-	proctab[pid].vmemlist->mnext->mnext = NULL;
 
+	// get the physical address of mnext
+	struct mblock *mb;
+	mb = (struct mblock *) ((FRAME0 + NFRAMES + store * 256) * NBPG);
+	mb->mlen = hsize * NBPG;
+	mb->mnext = NULL;
 	restore(ps);
 	return(pid);
 }

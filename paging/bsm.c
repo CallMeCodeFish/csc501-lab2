@@ -5,7 +5,6 @@
 #include <paging.h>
 #include <proc.h>
 
-bs_map_t bsm_tab[MAX_NUM_BS];
 
 /* reset the fields of a backing store map entry */
 void reset_bsm_entry(int i) {
@@ -37,10 +36,9 @@ SYSCALL init_bsm()
 SYSCALL get_bsm(int* avail)
 {
     int i;
-    for (int i = 0; i < MAX_NUM_BS; ++i) {
+    for (i = 0; i < MAX_NUM_BS; ++i) {
         if (bsm_tab[i].bs_status == BSM_UNMAPPED) {
             *avail = i;
-            restore(ps);
             return OK;
         }
     }
@@ -56,17 +54,15 @@ SYSCALL get_bsm(int* avail)
 SYSCALL free_bsm(int i)
 {
     if (i < 0 || i >= MAX_NUM_BS) {
-        restore(ps);
         return SYSERR;
     }
 
     bs_map_t entry = bsm_tab[i];
     if (entry.bs_status == BSM_UNMAPPED) {
-        restore(ps);
         return SYSERR;
     }
 
-    reset_bsm_entry(entry);
+    reset_bsm_entry(i);
 
     return OK;
 }
@@ -80,10 +76,9 @@ SYSCALL bsm_lookup(int pid, long vaddr, int* store, int* pageth)
     int i;
     int vpno = vaddr >> 12;
     for (i = 0; i < MAX_NUM_BS; ++i) {
-        if (bsm_tab[i].bs_status == BSM_MAPPED && bsm_tab[i].pid == pid && bsm_tab[i].bs_vpno <= vpno && vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
+        if (bsm_tab[i].bs_status == BSM_MAPPED && bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno <= vpno && vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
             *store = i;
             *pageth = vpno - bsm_tab[i].bs_vpno;
-            restore(ps);
             return OK;
         }
     }
@@ -129,13 +124,13 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
  */
 SYSCALL bsm_unmap(int pid, int vpno, int flag)
 {
+    int min_vpno = 4096;
+    int max_vpno = 0xffffff;
+
     // check validation
     if (vpno < min_vpno || vpno > max_vpno) {
         return SYSERR;
     }
-
-    int min_vpno = 4096;
-    int max_vpno = 0xffffff;
 
     // find the index of the backing store
     int i;
@@ -154,7 +149,7 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
     int j;
     for (j = 0; j < NFRAMES; ++j) {
         if (frm_tab[j].fr_status == FRM_MAPPED && frm_tab[j].fr_type == FR_PAGE && frm_tab[j].fr_pid == pid
-            && bsm_tab[i].bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j] < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
+            && bsm_tab[i].bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j].fr_vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
                 free_frm(j);
             }
     }
