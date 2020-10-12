@@ -36,9 +36,6 @@ SYSCALL init_bsm()
  */
 SYSCALL get_bsm(int* avail)
 {
-    STATWORD ps;
-    disable(ps);
-
     int i;
     for (int i = 0; i < MAX_NUM_BS; ++i) {
         if (bsm_tab[i].bs_status == BSM_UNMAPPED) {
@@ -48,7 +45,6 @@ SYSCALL get_bsm(int* avail)
         }
     }
 
-    restore(ps);
     return SYSERR;
 }
 
@@ -59,9 +55,6 @@ SYSCALL get_bsm(int* avail)
  */
 SYSCALL free_bsm(int i)
 {
-    STATWORD ps;
-    disable(ps);
-
     if (i < 0 || i >= MAX_NUM_BS) {
         restore(ps);
         return SYSERR;
@@ -75,7 +68,6 @@ SYSCALL free_bsm(int i)
 
     reset_bsm_entry(entry);
 
-    restore(ps);
     return OK;
 }
 
@@ -85,9 +77,6 @@ SYSCALL free_bsm(int i)
  */
 SYSCALL bsm_lookup(int pid, long vaddr, int* store, int* pageth)
 {
-    STATWORD ps;
-    disable(ps);
-
     int i;
     int vpno = vaddr >> 12;
     for (i = 0; i < MAX_NUM_BS; ++i) {
@@ -99,7 +88,6 @@ SYSCALL bsm_lookup(int pid, long vaddr, int* store, int* pageth)
         }
     }
 
-    restore(ps);
     return SYSERR;
 }
 
@@ -110,24 +98,18 @@ SYSCALL bsm_lookup(int pid, long vaddr, int* store, int* pageth)
  */
 SYSCALL bsm_map(int pid, int vpno, int source, int npages)
 {
-    STATWORD ps;
-    disable(ps);
-
     int min_vpno = 4096;
     int max_vpno = 0xffffff;
 
     if (source < 0 || source >= MAX_NUM_BS) {
-        restore(ps);
         return SYSERR;
     }
 
     if (npages <= 0 || npages > MAX_BS_PAGES) {
-        restore(ps);
         return SYSERR;
     }
 
     if (vpno < min_vpno || vpno > max_vpno) {
-        restore(ps);
         return SYSERR;
     }
 
@@ -136,7 +118,6 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
     bsm_tab[source].bs_vpno = vpno;
     bsm_tab[source].bs_npages = npages;
 
-    restore(ps);
     return OK;
 }
 
@@ -148,12 +129,8 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
  */
 SYSCALL bsm_unmap(int pid, int vpno, int flag)
 {
-    STATWORD ps;
-    disable(ps);  
-
     // check validation
     if (vpno < min_vpno || vpno > max_vpno) {
-        restore(ps);
         return SYSERR;
     }
 
@@ -170,7 +147,6 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
 
     if (i == MAX_NUM_BS) {
         // cannot find the backing store
-        restore(ps);
         return SYSERR;
     }
 
@@ -186,6 +162,5 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
     // delete mapping in backing store map
     reset_bsm_entry(i);
 
-    restore(ps);
     return OK;
 }
