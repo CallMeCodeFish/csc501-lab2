@@ -82,6 +82,9 @@ int	resched()
 #ifdef	DEBUG
 	PrintSaved(nptr);
 #endif
+
+	// write CR3 register for the next process
+	write_cr3(nptr->pdbr);
 	
 	ctxsw(&optr->pesp, optr->pirmask, &nptr->pesp, nptr->pirmask);
 
