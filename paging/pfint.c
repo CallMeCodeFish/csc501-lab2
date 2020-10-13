@@ -5,7 +5,7 @@
 #include <paging.h>
 #include <proc.h>
 
-
+// int canPrint = 1;
 /*-------------------------------------------------------------------------
  * pfint - paging fault ISR
  *-------------------------------------------------------------------------
@@ -28,7 +28,13 @@ SYSCALL pfint()
 
     // check if the faulted address is legal
     if (vpno < proctab[pid].vhpno || vpno >= proctab[pid].vhpno + proctab[pid].vhpnpages) {
-        kprintf("Illegal faulted address: 0x%08x\n", a);
+        kprintf("Illegal faulted address: 0x%08x for process %d\n", a, pid);
+        // if (canPrint == 1) {
+        //     kprintf("Illegal faulted address: 0x%08x for process %d\n", a, pid);
+        //     canPrint = 0;
+        //     kprintf("pid: %d, vpno: %d\n", pid, vpno);
+        //     kprintf("number of proc: %d\n", numproc);
+        // }
         kill(pid);
         restore(ps);
         return SYSERR;

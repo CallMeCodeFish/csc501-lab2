@@ -20,12 +20,16 @@ SYSCALL kill(int pid)
 	int	dev;
 
 	disable(ps);
+
+	// kprintf("进入kill!! pid = %d\n", pid);
 	if (isbadpid(pid) || (pptr= &proctab[pid])->pstate==PRFREE) {
 		restore(ps);
 		return(SYSERR);
 	}
 	if (--numproc == 0)
 		xdone();
+
+	// kprintf("here!! numproc = %d\n", numproc);
 
 	dev = pptr->pdevs[0];
 	if (! isbaddev(dev) )

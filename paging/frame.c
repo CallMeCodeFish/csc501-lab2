@@ -126,7 +126,7 @@ void frm_enqueue(int i) {
     frm_qtail = frm_qtail->fr_next;
 }
 
-// remove the i-th frame from the queue (used by SC replacement policy)
+// remove the i-th frame from the queue
 void frm_remove(int i) {
     fr_map_t *p = frm_qhead;
     fr_map_t *q = p->fr_next;
@@ -299,6 +299,14 @@ void allocate_page_directory(int pid) {
     for (i = 0; i < 4; ++i) {
         pd_entry[i].pd_write = 1;
         pd_entry[i].pd_pres = 1;
+        pd_entry[i].pd_user = 0;
+        pd_entry[i].pd_pwt = 0;
+        pd_entry[i].pd_pcd = 0;
+        pd_entry[i].pd_acc = 0;
+        pd_entry[i].pd_mbz = 0;
+        pd_entry[i].pd_fmb = 0;
+        pd_entry[i].pd_global = 0;
+        pd_entry[i].pd_avail = 0;
         pd_entry[i].pd_base = FRAME0 + i;
     }
 }

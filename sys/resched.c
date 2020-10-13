@@ -41,7 +41,7 @@ int	resched()
 			(unsigned long) currSP);
 		panic("current process stack overflow");
 	}
-#endif	
+#endif
 
 	/* force context switch */
 
@@ -82,10 +82,8 @@ int	resched()
 #ifdef	DEBUG
 	PrintSaved(nptr);
 #endif
-
-	// write CR3 register for the next process
+	// write value to cr3
 	write_cr3(nptr->pdbr);
-	
 	ctxsw(&optr->pesp, optr->pirmask, &nptr->pesp, nptr->pirmask);
 
 #ifdef	DEBUG

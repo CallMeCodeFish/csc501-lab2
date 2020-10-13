@@ -81,8 +81,6 @@ nulluser()				/* babysit CPU when no one is home */
 	kprintf("system running up!\n");
 	sysinit();
 
-	// kprintf("============================================================");
-
 	enable();		/* enable interrupts */
 
 	sprintf(vers, "PC Xinu %s", VERSION);
