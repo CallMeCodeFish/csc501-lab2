@@ -34,6 +34,7 @@ SYSCALL get_frm(int* avail)
         if (frm_tab[i].fr_status == FRM_UNMAPPED) {
             *avail = i;
             frm_enqueue(i);
+            // kprintf("====> can find: %d\n", i);
             restore(ps);
             return OK;
         }
@@ -69,6 +70,7 @@ SYSCALL free_frm(int i)
     
     int pt_fr_index = get_pt_fr_index(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
     if (--frm_tab[pt_fr_index].fr_refcnt == 0) {
+        // kprintf("======> free a page table frame: %d\n", pt_fr_index);
         // revoke the frame containing the page table
         frm_remove(pt_fr_index);
         reset_frm_entry(pt_fr_index);
@@ -163,6 +165,7 @@ int get_frm_by_SC() {
                 canFind = 1;
                 break;
             } else {
+                // kprintf("==========> acc: %d\n", q->fr_index);
                 pt_entry->pt_acc = 0;
                 p = q;
                 q = q->fr_next;
@@ -225,7 +228,7 @@ int get_frm_by_Aging() {
     p = frm_qhead;
     q = p->fr_next;
     while (p->fr_next != NULL) {
-        if (q->fr_age == min_age) {
+        if (q->fr_type == FR_PAGE && q->fr_age == min_age) {
             break;
         }
         p = q;

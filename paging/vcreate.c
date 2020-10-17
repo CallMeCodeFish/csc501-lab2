@@ -115,11 +115,14 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
 		return SYSERR;
 	}
 
+	// mark the backing store as private
+	bsm_tab[store].bs_private = BS_PRIVATE;
+
 	// update the process table entry for the process
 	proctab[pid].store = store;
 	proctab[pid].vhpno = 4096;
 	proctab[pid].vhpnpages = hsize;
-	proctab[pid].vmemlist->mnext = 4096 * NBPG;
+	proctab[pid].vmemlist->mnext = (struct mblock *) (4096 * NBPG);
 
 	// get the physical address of mnext
 	struct mblock *mb;

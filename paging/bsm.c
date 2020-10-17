@@ -8,11 +8,17 @@
 
 /* reset the fields of a backing store map entry */
 void reset_bsm_entry(int i) {
+    // bsm_tab[i].bs_status = BSM_UNMAPPED;
+    // bsm_tab[i].bs_pid = -1;
+    // bsm_tab[i].bs_sem = 0;
+    // bsm_tab[i].bs_npages = 0;
+    // bsm_tab[i].bs_vpno = 0;
+
     bsm_tab[i].bs_status = BSM_UNMAPPED;
-    bsm_tab[i].bs_pid = -1;
     bsm_tab[i].bs_sem = 0;
     bsm_tab[i].bs_npages = 0;
-    bsm_tab[i].bs_vpno = 0;
+    bsm_tab[i].bs_private = BS_NONPRIVATE;
+    bsm_tab[i].bs_ltail = bsm_tab[i].bs_lhead;
 }
 
 /*-------------------------------------------------------------------------
@@ -23,6 +29,15 @@ SYSCALL init_bsm()
 {
     int i;
     for (i = 0; i < MAX_NUM_BS; ++i) {
+        // reset_bsm_entry(i);
+
+        // initialize list head node and tail node
+        bs_map_list_t *dummy = getmem(sizeof(bs_map_list_t));
+        dummy->bs_pid = -1;
+        dummy->bs_vpno = 0;
+        dummy->bs_npages = 0;
+        dummy->bs_next = NULL;
+        bsm_tab[i].bs_lhead = dummy;
         reset_bsm_entry(i);
     }
 
@@ -57,9 +72,15 @@ SYSCALL free_bsm(int i)
         return SYSERR;
     }
 
-    bs_map_t entry = bsm_tab[i];
-    if (entry.bs_status == BSM_UNMAPPED) {
+    if (bsm_tab[i].bs_status == BSM_UNMAPPED) {
         return SYSERR;
+    }
+
+    bs_map_list_t *curr = bsm_tab[i].bs_lhead->bs_next;
+    while (curr != NULL) {
+        bs_map_list_t *temp = curr;
+        curr = curr->bs_next;
+        freemem(temp, sizeof(bs_map_list_t));
     }
 
     reset_bsm_entry(i);
@@ -74,12 +95,24 @@ SYSCALL free_bsm(int i)
 SYSCALL bsm_lookup(int pid, long vaddr, int* store, int* pageth)
 {
     int i;
-    int vpno = vaddr >> 12;
+    int vpno = vaddr / NBPG;
     for (i = 0; i < MAX_NUM_BS; ++i) {
-        if (bsm_tab[i].bs_status == BSM_MAPPED && bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno <= vpno && vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
-            *store = i;
-            *pageth = vpno - bsm_tab[i].bs_vpno;
-            return OK;
+        // if (bsm_tab[i].bs_status == BSM_MAPPED && bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno <= vpno && vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
+        //     *store = i;
+        //     *pageth = vpno - bsm_tab[i].bs_vpno;
+        //     return OK;
+        // }
+
+        if (bsm_tab[i].bs_status == BSM_MAPPED) {
+            bs_map_list_t *curr = bsm_tab[i].bs_lhead->bs_next;
+            while (curr != NULL) {
+                if (curr->bs_pid == pid && curr->bs_vpno <= vpno && vpno < curr->bs_vpno + curr->bs_npages) {
+                    *store = i;
+                    *pageth = vpno - curr->bs_vpno;
+                    return OK;
+                }
+                curr = curr->bs_next;
+            }
         }
     }
 
@@ -108,10 +141,17 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
         return SYSERR;
     }
 
-    bsm_tab[source].bs_pid = pid;
-    bsm_tab[source].bs_status = BSM_MAPPED;
-    bsm_tab[source].bs_vpno = vpno;
-    bsm_tab[source].bs_npages = npages;
+    // bsm_tab[source].bs_pid = pid;
+    // bsm_tab[source].bs_status = BSM_MAPPED;
+    // bsm_tab[source].bs_vpno = vpno;
+    // bsm_tab[source].bs_npages = npages;
+
+    if (bsm_tab[source].bs_status == BSM_UNMAPPED) {
+        bsm_tab[source].bs_status = BSM_MAPPED;
+        bsm_tab[source].bs_npages = npages;
+    }
+    
+    add_list_node(pid, vpno, source, npages);
 
     return OK;
 }
@@ -134,9 +174,24 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
 
     // find the index of the backing store
     int i;
+    bs_map_list_t *curr;
     for (i = 0; i < MAX_NUM_BS; ++i) {
-        if (bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno == vpno && bsm_tab[i].bs_status == BSM_MAPPED) {
-            break;
+        // if (bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno == vpno && bsm_tab[i].bs_status == BSM_MAPPED) {
+        //     break;
+        // }
+
+        if (bsm_tab[i].bs_status == BSM_MAPPED) {
+            curr = bsm_tab[i].bs_lhead->bs_next;
+            while (curr != NULL) {
+                if (curr->bs_pid == pid && curr->bs_vpno <= vpno && vpno < curr->bs_vpno + curr->bs_npages) {
+                    break;
+                }
+                curr = curr->bs_next;
+            }
+
+            if (curr != NULL) {
+                break;
+            }
         }
     }
 
@@ -148,14 +203,50 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
     // free the corresponding frame in the physical memory
     int j;
     for (j = 0; j < NFRAMES; ++j) {
+        // if (frm_tab[j].fr_status == FRM_MAPPED && frm_tab[j].fr_type == FR_PAGE && frm_tab[j].fr_pid == pid
+        //     && bsm_tab[i].bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j].fr_vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
+        //         free_frm(j);
+        // }
+
         if (frm_tab[j].fr_status == FRM_MAPPED && frm_tab[j].fr_type == FR_PAGE && frm_tab[j].fr_pid == pid
-            && bsm_tab[i].bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j].fr_vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
-                free_frm(j);
-            }
+            && curr->bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j].fr_vpno < curr->bs_vpno + curr->bs_npages) 
+        {
+            free_frm(j);
+        }
     }
 
     // delete mapping in backing store map
-    reset_bsm_entry(i);
+    delete_list_node(i, curr);
+
+    if (bsm_tab[i].bs_lhead->bs_next == NULL) {
+        reset_bsm_entry(i);
+    }
 
     return OK;
+}
+
+// add a node in the list of the corresponding backing store map entry
+void add_list_node(int pid, int vpno, int store, int npages) {
+    bs_map_list_t *new_node = getmem(sizeof(bs_map_list_t));
+    new_node->bs_pid = pid;
+    new_node->bs_vpno = vpno;
+    new_node->bs_npages = npages;
+    new_node->bs_next = NULL;
+    bsm_tab[store].bs_ltail->bs_next = new_node;
+    bsm_tab[store].bs_ltail = new_node;
+}
+
+// delete a node in the list of the corresponding backing store map entry
+void delete_list_node(int store, bs_map_list_t *curr) {
+    bs_map_list_t *p = bsm_tab[store].bs_lhead;
+    bs_map_list_t *q = p->bs_next;
+    while (q != curr) {
+        p = q;
+        q = q->bs_next;
+    }
+    p->bs_next = q->bs_next;
+    if (q == bsm_tab[store].bs_ltail) {
+        bsm_tab[store].bs_ltail = p;
+    }
+    freemem(curr, sizeof(bs_map_list_t));
 }

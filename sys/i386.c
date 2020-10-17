@@ -144,7 +144,7 @@ setsegs()
 	np = ((int)&etext + NBPG-1) / NBPG;	/* # code pages */
 	psd->sd_lolimit = np;
 	psd->sd_hilimit = np >> 16;
-#if 0
+#if 1
 	psd = &gdt_copy[2];	/* kernel data segment */
 	psd->sd_lolimit = npages;
 	psd->sd_hilimit = npages >> 16;

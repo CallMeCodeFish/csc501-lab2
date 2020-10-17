@@ -45,13 +45,30 @@ typedef struct{
 /* backing store map entry */
 #define MAX_NUM_BS 8
 #define MAX_BS_PAGES 256
+#define BS_PRIVATE 1
+#define BS_NONPRIVATE 0;
+
+typedef struct __bs_map_list_t{
+  int bs_pid;
+  int bs_vpno;
+  int bs_npages;
+  struct __bs_map_list_t *bs_next;
+} bs_map_list_t;
 
 typedef struct{
+  // int bs_status;			/* MAPPED or UNMAPPED		*/
+  // int bs_pid;				/* process id using this slot   */
+  // int bs_vpno;				/* starting virtual page number */
+  // int bs_npages;			/* number of pages in the store */
+  // int bs_sem;				/* semaphore mechanism ?	*/
+
   int bs_status;			/* MAPPED or UNMAPPED		*/
-  int bs_pid;				/* process id using this slot   */
-  int bs_vpno;				/* starting virtual page number */
   int bs_npages;			/* number of pages in the store */
   int bs_sem;				/* semaphore mechanism ?	*/
+
+  int bs_private;  /* is private heap */
+  bs_map_list_t *bs_lhead;
+  bs_map_list_t *bs_ltail;
 } bs_map_t;
 
 /* inversed page table entry*/
@@ -91,6 +108,8 @@ SYSCALL free_bsm(int);
 SYSCALL bsm_lookup(int, long, int*, int*);
 SYSCALL bsm_map(int, int, int, int);
 SYSCALL bsm_unmap(int, int, int);
+void add_list_node(int, int, int, int);
+void delete_list_node(int, bs_map_list_t *);
 
 /* functions related to frames */
 SYSCALL init_frm();
@@ -108,6 +127,10 @@ int get_pt_fr_index(int, int);
 
 /* allocate page directory for a process */
 void allocate_page_directory(int);
+
+/* functions related to policy */
+SYSCALL srpolicy(int);
+SYSCALL grpolicy();
 
 /* globel variables related to frames */
 fr_map_t frm_qdummy;

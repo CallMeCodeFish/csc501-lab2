@@ -74,8 +74,18 @@ void proc1_test3(char *msg, int lck) {
 	return;
 }
 
+void proc1_test4() {
+	int i;
+	char *addr = (char *)0x0;
+	while (1) {
+		for (i = 4096; i < 4096 + 256; ++i) {
+			*(addr + i * NBPG) = 'A';
+		}
+	}
+}
+
 void printQueue() {
-	kprintf("打印信息\n");
+	kprintf("\n\n打印信息\n");
 	fr_map_t *cur = frm_qhead->fr_next;
 	while (cur != NULL) {
 		kprintf("frame %d, pid %d\n", cur->fr_index, cur->fr_pid);
@@ -85,25 +95,23 @@ void printQueue() {
 
 int main() {
 	int pid1;
-	int pid2;
+	// int pid2;
 
-	// kprintf("运行main进程!!\n");
+	kprintf("运行main进程!!\n");
 
-	// kprintf("\n1: shared memory\n");
-	// pid1 = create(proc1_test1, 2000, 20, "proc1_test1", 0, NULL);
-	// resume(pid1);
-	// sleep(10);
+	kprintf("\n1: shared memory\n");
+	pid1 = create(proc1_test1, 2000, 20, "proc1_test1", 0, NULL);
+	resume(pid1);
+	sleep(10);
 
-	// printQueue();
 	
 
-	// kprintf("\n2: vgetmem/vfreemem\n");
-	// pid1 = vcreate(proc1_test2, 2000, 100, 20, "proc1_test2", 0, NULL);
-	// kprintf("pid %d has private heap\n", pid1);
-	// resume(pid1);
-	// sleep(3);	
+	kprintf("\n2: vgetmem/vfreemem\n");
+	pid1 = vcreate(proc1_test2, 2000, 100, 20, "proc1_test2", 0, NULL);
+	kprintf("pid %d has private heap\n", pid1);
+	resume(pid1);
+	sleep(3);	
 
-	// printQueue();
 
 	kprintf("\n3: Frame test\n");
 	pid1 = create(proc1_test3, 2000, 20, "proc1_test3", 0, NULL);
@@ -111,8 +119,44 @@ int main() {
 	sleep(3);
 	// sleep(10);
 
-	// shutdown();
+	
 	printQueue();
+
+	// srpolicy(SC);
+	// srpolicy(AGING);
+
+	// int pid3 = vcreate(proc1_test4, 2000, 256, 20, "proc1_test4_1", 0, NULL); //48
+	// int pid4 = vcreate(proc1_test4, 2000, 256, 20, "proc1_test4_2", 0, NULL); //47
+	// int pid5 = vcreate(proc1_test4, 2000, 256, 20, "proc1_test4_3", 0, NULL); //46
+	// int pid6 = vcreate(proc1_test4, 2000, 256, 20, "proc1_test4_4", 0, NULL); //45
+	// int pid7 = vcreate(proc1_test4, 2000, 256, 20, "proc1_test4_5", 0, NULL); //44
+
+	// resume(pid3);
+	// resume(pid4);
+	// resume(pid5);
+	// resume(pid6);
+	// resume(pid7);
+
+	// sleep(2);
+
+	// kill(pid3);
+	// kill(pid4);
+	// kill(pid5);
+	// kill(pid6);
+	// kill(pid7);
+
+	// int i;
+	// for (i = 0; i < 8; ++i) {
+	// 	int pid = vcreate(proc1_test4, 2000, 256, 20, "proc1_test4", 0, NULL);
+	// 	resume(pid);
+	// }
+
+	// sleep(1);
+	
+	// for (i = 48; i > 40; --i) {
+	// 	kill(i);
+	// }
+
 	kprintf("main进程结束!!\n");
 	return 0;
 }

@@ -28,11 +28,11 @@ SYSCALL pfint()
 
     // check if the faulted address is legal
     if (vpno < proctab[pid].vhpno || vpno >= proctab[pid].vhpno + proctab[pid].vhpnpages) {
-        kprintf("Illegal faulted address: 0x%08x for process %d\n", a, pid);
+        kprintf("Illegal faulted address: 0x%08x for process id: %d\n", a, pid);
         // if (canPrint == 1) {
         //     kprintf("Illegal faulted address: 0x%08x for process %d\n", a, pid);
         //     canPrint = 0;
-        //     kprintf("pid: %d, vpno: %d\n", pid, vpno);
+            kprintf("pid: %d, vpno: %d, npages: %d\n", pid, proctab[pid].vhpno, proctab[pid].vhpnpages);
         //     kprintf("number of proc: %d\n", numproc);
         // }
         kill(pid);

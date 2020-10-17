@@ -12,18 +12,22 @@
  */
 SYSCALL xmmap(int virtpage, bsd_t source, int npages)
 {
+    // will only be called by process created by create()
     int pid = getpid();
+
+    // check if the backing store is private
+    if (bsm_tab[source].bs_private == BS_PRIVATE) {
+        return SYSERR;
+    }
 
     if (bsm_map(pid, virtpage, source, npages) == SYSERR) {
         return SYSERR;
     }
 
+    //used for pfint
     proctab[pid].store = source;
 	proctab[pid].vhpno = virtpage;
 	proctab[pid].vhpnpages = npages;
-	// proctab[pid].vmemlist->mnext = 4096 * NBPG;
-	// proctab[pid].vmemlist->mnext->mlen = hsize * NBPG;
-	// proctab[pid].vmemlist->mnext->mnext = NULL;
     
     return OK;
 }
@@ -38,5 +42,13 @@ SYSCALL xmunmap(int virtpage)
 {
     int pid = getpid();
 
-    return bsm_unmap(pid, virtpage, 0);
+    if (bsm_unmap(pid, virtpage, 0) == SYSERR) {
+        return SYSERR;
+    }
+
+    proctab[pid].store = -1;
+    proctab[pid].vhpno = 0;
+	proctab[pid].vhpnpages = 0;
+
+    return OK;
 }
