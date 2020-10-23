@@ -194,9 +194,11 @@ void test3() {
 	if (mypid != SYSERR)
 		ret = TFAILED;
 
+	// kprintf(">>> point A\n");
 	for(i=0;i < MAX_BSTORE;i++){
 		kill(pids[i]);
 	}
+	// kprintf(">>> point B\n");
 	if (ret != TPASSED)
 		kprintf("\tFAILED!\n");
 	else
@@ -366,9 +368,12 @@ void proc1_test5(int* ret) {
 	int *y;
 	int *z;
 
-	//kprintf("ready to allocate heap space\n");
+	kprintf("ready to allocate heap space\n");
+	// kprintf(">>> point A\n");
+	// kprintf("request0\n");
 	x = vgetmem(1024);
 	if ((x == NULL) || (x < 0x1000000)) {
+		
 		*ret = TFAILED;
 	    //kprintf("heap allocated at %x (address should be > 0x1000000 (16MB))\n", x);
     }
@@ -379,18 +384,31 @@ void proc1_test5(int* ret) {
 	*(x + 1) = 200;
 
 	//kprintf("heap variable: %d %d (should print 100 and 200)\n", *x, *(x + 1));
-	if ((*x != 100) || (*(x+1) != 200))
+	if ((*x != 100) || (*(x+1) != 200)) {
 		*ret = TFAILED;
+	}
+	
+	// kprintf(">>> point A\n");
 	vfreemem(x, 1024);
+	// kprintf(">>> point B\n");
 
+	// kprintf(">>> point B\n");
+
+	// kprintf("request1\n");
 	x = vgetmem((MAXNPG + 1) * NBPG); //try to acquire a space that is bigger than size of one backing store
 	if (x != SYSERR) {
 		*ret = TFAILED;
     }
 
+	// kprintf("request2\n");
 	x = vgetmem(50*NBPG);
+	// kprintf("request3\n");
 	y = vgetmem(50*NBPG);
+	// kprintf("request4\n");
 	z = vgetmem(50*NBPG);
+
+	// kprintf(">>> point C\n");
+	
 	if ((x == SYSERR) || (y == SYSERR) || (z != SYSERR)){
 		*ret = TFAILED;
 		if (x != NULL) vfreemem(x, 50*NBPG);
@@ -399,12 +417,15 @@ void proc1_test5(int* ret) {
 		return;
 	}
 	vfreemem(y, 50*NBPG);
+	// kprintf("request5\n");
 	z = vgetmem(50*NBPG);
 	if (z == SYSERR){
 		*ret = TFAILED;
 	}
 	if (x != NULL) vfreemem(x, 50*NBPG);
 	if (z != NULL) vfreemem(z, 50*NBPG);
+
+	// kprintf(">>> point D\n");
 	return;
 
 
@@ -437,7 +458,7 @@ void proc1_test6(int *ret) {
 	int tempaddr;
     int addrs[1200];
 
-    int maxpage = (NFRAMES - (5 + 1 + 1 + 1));
+    int maxpage = (NFRAMES - (5 + 1 + 1 + 1)); //1016
 
 	int vaddr_beg = 0x40000000;//1GB or page 262144
 	int vpno;
@@ -450,6 +471,7 @@ void proc1_test6(int *ret) {
 		get_bs(i, 127);
 		if (xmmap(vpno, i, 127) == SYSERR) {
 			*ret = TFAILED;
+			kprintf("===> i = %d\n", i);
 			kprintf("xmmap call failed\n");
 			sleep(3);
 			return;
@@ -481,6 +503,9 @@ void test6(){
 
 	pid1 = create(proc1_test6, 2000, 50, "proc1_test6",1,&ret);
 
+	// check statues of the bsm_tab
+	// kprintf("check: bsm 0 status = %d, private = %d\n", bsm_tab[0].bs_status, bsm_tab[0].bs_private);
+
 	resume(pid1);
 	sleep(4);
 	kill(pid1);
@@ -499,11 +524,11 @@ void test_func7()
 		int cnt = 0;
 		//can go up to  (NFRAMES - 5 frames for null prc - 1pd for main - 1pd + 1pt frames for this proc)
 		//frame for pages will be from 1032-2047
-		int maxpage = (NFRAMES - (5 + 1 + 1 + 1));
+		int maxpage = (NFRAMES - (5 + 1 + 1 + 1)); //1016
         //int maxpage = (NFRAMES - 25);
 
 
-		for (i=0;i<=maxpage/150;i++){
+		for (i=0;i<=maxpage/150;i++){ // 7 times
 				if(get_bs(i,150) == SYSERR)
 				{
 						kprintf("get_bs call failed \n");
@@ -746,13 +771,13 @@ int main() {
     	//    test5();
         //    break;
         // case 6:
-    	   test6();
+    	//    test6();
         //    break;
         // case 7:
            test7();
         //    break;
         // case 8:
-           test8();
+        //    test8();
         //    break;
         // default:
         //    kprintf("No test selected\n");

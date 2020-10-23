@@ -40,7 +40,14 @@ SYSCALL kill(int pid)
     }
 
 	// free bsm tab
-	free_bsm(proctab[pid].store);
+	if (proctab[pid].store != -1) {
+		bsm_unmap(pid, proctab[pid].vhpno, 0);
+		proctab[pid].store = -1;
+		proctab[pid].vhpno = 0;
+		proctab[pid].vhpnpages = 0;
+		free_bsm(proctab[pid].store);
+	}
+	
 
 	// kprintf("进入kill!! pid = %d, 当前pid = %d\n", pid, currpid);
 	if (isbadpid(pid) || (pptr= &proctab[pid])->pstate==PRFREE) {

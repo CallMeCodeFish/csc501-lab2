@@ -15,6 +15,7 @@ void reset_bsm_entry(int i) {
     // bsm_tab[i].bs_vpno = 0;
 
     // kprintf("!!!!!reset_bsm_entry\n");
+    // kprintf("===>reset: %d\n", i);
     bsm_tab[i].bs_status = BSM_UNMAPPED;
     bsm_tab[i].bs_sem = 0;
     bsm_tab[i].bs_npages = 0;
@@ -70,16 +71,22 @@ SYSCALL get_bsm(int* avail)
  */
 SYSCALL free_bsm(int i)
 {
+    // kprintf(">>>>>point 1\n");
     if (i < 0 || i >= MAX_NUM_BS) {
         return SYSERR;
     }
+
+    // kprintf(">>>>>point 2\n");
 
     if (bsm_tab[i].bs_status == BSM_UNMAPPED) {
         return SYSERR;
     }
 
+    // kprintf(">>>>>point 3\n");
+
     bs_map_list_t *curr = bsm_tab[i].bs_lhead->bs_next;
     if (bsm_tab[i].bs_private == BS_PRIVATE) {
+        // kprintf(">>>>>point 4\n");
         while (curr != NULL) {
             bs_map_list_t *temp = curr;
             curr = curr->bs_next;
@@ -87,10 +94,15 @@ SYSCALL free_bsm(int i)
         }
     }
 
+    // kprintf(">>>>>point 5\n");
+
     if (curr == NULL) {
-        // kprintf("!!!!free_mem\n");
+        // kprintf("######free_mem\n");
+        // kprintf(">>>>>point 6\n");
         reset_bsm_entry(i);
     }
+
+    // kprintf(">>>>>point 7\n");
 
     return OK;
 }
