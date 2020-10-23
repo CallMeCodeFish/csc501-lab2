@@ -39,7 +39,10 @@ SYSCALL kill(int pid)
         }
     }
 
-	// kprintf("进入kill!! pid = %d\n", pid);
+	// free bsm tab
+	free_bsm(proctab[pid].store);
+
+	// kprintf("进入kill!! pid = %d, 当前pid = %d\n", pid, currpid);
 	if (isbadpid(pid) || (pptr= &proctab[pid])->pstate==PRFREE) {
 		restore(ps);
 		return(SYSERR);

@@ -14,6 +14,7 @@ void reset_bsm_entry(int i) {
     // bsm_tab[i].bs_npages = 0;
     // bsm_tab[i].bs_vpno = 0;
 
+    // kprintf("!!!!!reset_bsm_entry\n");
     bsm_tab[i].bs_status = BSM_UNMAPPED;
     bsm_tab[i].bs_sem = 0;
     bsm_tab[i].bs_npages = 0;
@@ -38,6 +39,7 @@ SYSCALL init_bsm()
         dummy->bs_npages = 0;
         dummy->bs_next = NULL;
         bsm_tab[i].bs_lhead = dummy;
+        // kprintf("!!!!!init_bsm\n");
         reset_bsm_entry(i);
     }
 
@@ -77,13 +79,18 @@ SYSCALL free_bsm(int i)
     }
 
     bs_map_list_t *curr = bsm_tab[i].bs_lhead->bs_next;
-    while (curr != NULL) {
-        bs_map_list_t *temp = curr;
-        curr = curr->bs_next;
-        freemem(temp, sizeof(bs_map_list_t));
+    if (bsm_tab[i].bs_private == BS_PRIVATE) {
+        while (curr != NULL) {
+            bs_map_list_t *temp = curr;
+            curr = curr->bs_next;
+            freemem(temp, sizeof(bs_map_list_t));
+        }
     }
 
-    reset_bsm_entry(i);
+    if (curr == NULL) {
+        // kprintf("!!!!free_mem\n");
+        reset_bsm_entry(i);
+    }
 
     return OK;
 }
@@ -92,10 +99,18 @@ SYSCALL free_bsm(int i)
  * bsm_lookup - lookup bsm_tab and find the corresponding entry
  *-------------------------------------------------------------------------
  */
-SYSCALL bsm_lookup(int pid, long vaddr, int* store, int* pageth)
+SYSCALL bsm_lookup(int pid, unsigned long vaddr, int* store, int* pageth)
 {
     int i;
     int vpno = vaddr / NBPG;
+
+    // if (pid == 48) {
+    //     kprintf("!!!!!!!!!!!!!!!进来\n");
+    //     bs_map_list_t *curr = bsm_tab[1].bs_lhead->bs_next;
+    //     kprintf("______查 vpno = %d\n", vpno);
+    //     kprintf("_____status=%d, pid=%d, vpno=%d\n", bsm_tab[1].bs_status ,curr->bs_pid, curr->bs_vpno);
+    // }
+
     for (i = 0; i < MAX_NUM_BS; ++i) {
         // if (bsm_tab[i].bs_status == BSM_MAPPED && bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno <= vpno && vpno < bsm_tab[i].bs_vpno + bsm_tab[i].bs_npages) {
         //     *store = i;
@@ -149,6 +164,10 @@ SYSCALL bsm_map(int pid, int vpno, int source, int npages)
     if (bsm_tab[source].bs_status == BSM_UNMAPPED) {
         bsm_tab[source].bs_status = BSM_MAPPED;
         bsm_tab[source].bs_npages = npages;
+    } else {
+        if (npages > bsm_tab[source].bs_npages) {
+            return SYSERR;
+        }
     }
     
     add_list_node(pid, vpno, source, npages);
@@ -172,9 +191,11 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
         return SYSERR;
     }
 
+    // kprintf(">>point 2.1.1\n");
+
     // find the index of the backing store
     int i;
-    bs_map_list_t *curr;
+    bs_map_list_t *curr = NULL;
     for (i = 0; i < MAX_NUM_BS; ++i) {
         // if (bsm_tab[i].bs_pid == pid && bsm_tab[i].bs_vpno == vpno && bsm_tab[i].bs_status == BSM_MAPPED) {
         //     break;
@@ -200,6 +221,8 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
         return SYSERR;
     }
 
+    // kprintf(">>point 2.1.2\n");
+
     // free the corresponding frame in the physical memory
     int j;
     for (j = 0; j < NFRAMES; ++j) {
@@ -211,16 +234,24 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
         if (frm_tab[j].fr_status == FRM_MAPPED && frm_tab[j].fr_type == FR_PAGE && frm_tab[j].fr_pid == pid
             && curr->bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j].fr_vpno < curr->bs_vpno + curr->bs_npages) 
         {
+            
             free_frm(j);
+            
         }
     }
+
+    // kprintf(">>point 2.1.3\n");
 
     // delete mapping in backing store map
     delete_list_node(i, curr);
 
+    // kprintf(">>point 2.1.4\n");
+
     if (bsm_tab[i].bs_lhead->bs_next == NULL) {
         reset_bsm_entry(i);
     }
+
+    // kprintf(">>point 2.1.5\n");
 
     return OK;
 }

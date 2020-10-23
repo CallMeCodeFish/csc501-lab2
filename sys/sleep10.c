@@ -24,6 +24,7 @@ SYSCALL	sleep10(int n)
 		slnempty = TRUE;
 		sltop = &q[q[clockq].qnext].qkey;
 		proctab[currpid].pstate = PRSLEEP;
+		// kprintf("===>sleep: pid = %d\n", currpid);
 	}
 	resched();
         restore(ps);

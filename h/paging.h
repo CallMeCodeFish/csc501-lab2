@@ -46,7 +46,7 @@ typedef struct{
 #define MAX_NUM_BS 8
 #define MAX_BS_PAGES 256
 #define BS_PRIVATE 1
-#define BS_NONPRIVATE 0;
+#define BS_NONPRIVATE 0
 
 typedef struct __bs_map_list_t{
   int bs_pid;
@@ -105,7 +105,7 @@ SYSCALL write_bs(char *, bsd_t, int);
 SYSCALL init_bsm();
 SYSCALL get_bsm(int*);
 SYSCALL free_bsm(int);
-SYSCALL bsm_lookup(int, long, int*, int*);
+SYSCALL bsm_lookup(int, unsigned long, int*, int*);
 SYSCALL bsm_map(int, int, int, int);
 SYSCALL bsm_unmap(int, int, int);
 void add_list_node(int, int, int, int);

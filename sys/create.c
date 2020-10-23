@@ -96,6 +96,11 @@ SYSCALL create(procaddr,ssize,priority,name,nargs,args)
 	*--saddr = 0;		/* %edi */
 	*pushsp = pptr->pesp = (unsigned long)saddr;
 
+	// initialize fields for paging
+	proctab[pid].store = -1;
+    proctab[pid].vhpno = 0;
+	proctab[pid].vhpnpages = 0;
+
 	allocate_page_directory(pid);
 	restore(ps);
 

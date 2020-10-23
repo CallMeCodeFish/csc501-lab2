@@ -4,6 +4,7 @@
 #include <kernel.h>
 #include <proc.h>
 #include <q.h>
+#include <paging.h>
 
 unsigned long currSP;	/* REAL sp of current process */
 
@@ -42,6 +43,24 @@ int	resched()
 		panic("current process stack overflow");
 	}
 #endif
+
+	if (optr->pstate != PRFREE) {
+		// if the process is created by create() and has backing store, pages should be freed and written back to backing store
+		
+		// if (currpid == 48) {
+		// 	kprintf("state of 48: %d\n", optr->pstate);
+		// }
+		int store = proctab[currpid].store;
+		if (store != -1 && bsm_tab[store].bs_private == BS_NONPRIVATE) {
+			int i;
+			for (i = 0; i < NFRAMES; ++i) {
+				if (frm_tab[i].fr_status == FRM_MAPPED && frm_tab[i].fr_pid == currpid && frm_tab[i].fr_type == FR_PAGE) {
+					// kprintf("-------> resched: pid = %d, frame id = %d\n", currpid, i);
+					free_frm(i);
+				}
+			}
+		}
+	}
 
 	/* force context switch */
 

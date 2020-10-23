@@ -26,15 +26,19 @@ SYSCALL pfint()
 
     int pid = getpid();
 
+    // kprintf("addr: 0x%08x, pid: %d\n", a, pid);
+    // kprintf("Illegal faulted address: 0x%08x for process id: %d\n", a, pid);
+
     // check if the faulted address is legal
     if (vpno < proctab[pid].vhpno || vpno >= proctab[pid].vhpno + proctab[pid].vhpnpages) {
         kprintf("Illegal faulted address: 0x%08x for process id: %d\n", a, pid);
         // if (canPrint == 1) {
         //     kprintf("Illegal faulted address: 0x%08x for process %d\n", a, pid);
         //     canPrint = 0;
-            kprintf("pid: %d, vpno: %d, npages: %d\n", pid, proctab[pid].vhpno, proctab[pid].vhpnpages);
+        // kprintf("vpno: %d, proctab[pid].vhpno: %d, proctab[pid].vhpnpages: %d\n", vpno, proctab[pid].vhpno, proctab[pid].vhpnpages);
         //     kprintf("number of proc: %d\n", numproc);
         // }
+        
         kill(pid);
         restore(ps);
         return SYSERR;
@@ -74,6 +78,8 @@ SYSCALL pfint()
         pt_frm_index = pd_entry->pd_base - FRAME0;
     }
 
+    // kprintf("=====> <======\n");
+
     // create a page for data
     int pg_frm_index;
     get_frm(&pg_frm_index);
@@ -84,6 +90,7 @@ SYSCALL pfint()
     bsm_lookup(pid, a, &store, &pageth);
     read_bs((char *) ((FRAME0 + pg_frm_index) * NBPG), store, pageth);
 
+    // kprintf("=====> 11<======\n");
     // set fields in the page
     frm_tab[pg_frm_index].fr_status = FRM_MAPPED;
     frm_tab[pg_frm_index].fr_type = FR_PAGE;
@@ -108,6 +115,7 @@ SYSCALL pfint()
     pt_entry->pt_base = FRAME0 + pg_frm_index;
 
     frm_tab[pt_frm_index].fr_refcnt++;
+    // kprintf("=====>33 <======\n");
 
     restore(ps);
     return OK;

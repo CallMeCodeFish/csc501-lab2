@@ -65,7 +65,53 @@ SYSCALL get_frm(int* avail)
  */
 SYSCALL free_frm(int i)
 {
+    // kprintf(">>>point A\n");
     pt_t *pt_entry = get_pt_entry(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
+    // kprintf(">>>point B\n");
+
+    if (pt_entry->pt_dirty == 1) {
+        // write back to the backing store
+        int store;
+        int pageth;
+        // kprintf(">>>point A\n");
+        bsm_lookup(frm_tab[i].fr_pid, frm_tab[i].fr_vpno * NBPG, &store, &pageth);
+        // if (bsm_lookup(frm_tab[i].fr_pid, (long)(frm_tab[i].fr_vpno * NBPG), &store, &pageth) == SYSERR) {
+        //     kprintf("###### fail: store=%d, pageth=%d\n", store, pageth);
+        //     bs_map_list_t *ptr = bsm_tab[1].bs_lhead->bs_next;
+        //     // kprintf("****ptr = %d\n", ptr);
+        //     kprintf("&&&&& pid = %d, vpno = %d\n", frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
+        //     kprintf("   **** pid = %d, vpno = %d\n", ptr->bs_pid, ptr->bs_vpno);
+        // }
+        // kprintf(">>>point B\n");
+
+        // if (currpid == 48) {
+        //     kprintf("write back to store %d: frame id = %d\n", store, i);
+        // }
+        // kprintf(">>point 1\n");
+        // if (currpid == 48) {
+        //     kprintf("----->check: frame=%d, store=%d, pageth=%d\n", i, store, pageth);
+        // }
+
+        write_bs((FRAME0 + i) * NBPG, store, pageth);
+        // kprintf(">>point 2\n");
+        // kprintf(">>>point C\n");
+
+        // if (currpid == 48) {
+        //     char *addr;
+        //     addr = (FRAME0 + NFRAMES + store * MAX_BS_PAGES) * NBPG;
+        //     int j;
+        //     for (j = 0; j < 26; ++j) {
+        //         kprintf("read: j = %d, value = %d\n", j, *(addr + j * NBPG));
+        //     }
+        // }
+    }
+
+    // kprintf(">>>point C\n");
+
+    // remove the FR_PAGE page from the frame queue
+    frm_remove(i);
+    reset_frm_entry(i);
+
     pt_entry->pt_pres = 0;
     
     int pt_fr_index = get_pt_fr_index(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
@@ -78,17 +124,7 @@ SYSCALL free_frm(int i)
         pd_entry->pd_pres = 0;
     }
 
-    if (pt_entry->pt_dirty == 1) {
-        // write back to the backing store
-        int store;
-        int pageth;
-        bsm_lookup(frm_tab[i].fr_pid, frm_tab[i].fr_vpno * NBPG, &store, &pageth);
-        write_bs((FRAME0 + i) * NBPG, store, pageth);
-    }
-
-    // remove the FR_PAGE page from the frame queue
-    frm_remove(i);
-    reset_frm_entry(i);
+    // kprintf(">>>point D\n");
 
     return OK;
 }
