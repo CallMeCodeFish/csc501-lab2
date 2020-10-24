@@ -4,6 +4,7 @@
 #include <kernel.h>
 #include <proc.h>
 #include <q.h>
+#include <paging.h>
 
 unsigned long currSP;	/* REAL sp of current process */
 
@@ -42,6 +43,56 @@ int	resched()
 		panic("current process stack overflow");
 	}
 #endif
+
+	// if (optr->pstate != PRFREE) {
+	// 	// if the process is created by create() and has backing store, pages should be freed and written back to backing store
+		
+	// 	// if (currpid == 48) {
+	// 	// 	kprintf("state of 48: %d\n", optr->pstate);
+	// 	// }
+	// 	int store = proctab[currpid].store;
+	// 	if (store != -1 && bsm_tab[store].bs_private == BS_NONPRIVATE) {
+	// 		int i;
+	// 		for (i = 0; i < NFRAMES; ++i) {
+	// 			if (frm_tab[i].fr_status == FRM_MAPPED && frm_tab[i].fr_pid == currpid && frm_tab[i].fr_type == FR_PAGE) {
+	// 				// kprintf("-------> resched: pid = %d, frame id = %d\n", currpid, i);
+	// 				free_frm(i);
+	// 			}
+	// 		}
+	// 	}
+	// }
+
+	// if the process is created by create() and has backing store, dirty pages should be freed and written back to backing store
+	if (optr->pstate != PRFREE && optr->store == 8) {
+		int i;
+		pt_t *pt_entry;
+		for (i = 0; i < NFRAMES; ++i) {
+			if (frm_tab[i].fr_status == FRM_MAPPED && frm_tab[i].fr_pid == currpid && frm_tab[i].fr_type == FR_PAGE) {
+				pt_entry = get_pt_entry(currpid, frm_tab[i].fr_vpno);
+				if (pt_entry->pt_dirty == 1) {
+					int store;
+					int pageth;
+					bsm_lookup(currpid, frm_tab[i].fr_vpno * NBPG, &store, &pageth);
+					write_bs((FRAME0 + i) * NBPG, store, pageth);
+					pt_entry->pt_dirty = 0;
+				}
+				if (grpolicy() == AGING &&optr->pstate == PRSLEEP) {
+					//clear reference bit
+					pt_entry->pt_acc = 0;
+				}
+			}
+		}
+	}
+
+	// if (optr->pstate != PRFREE && optr->store == 8) {
+	// 	int i;
+	// 	for (i = 0; i < NFRAMES; ++i) {
+	// 		if (frm_tab[i].fr_status == FRM_MAPPED && frm_tab[i].fr_pid == currpid && frm_tab[i].fr_type == FR_PAGE) {
+	// 			// kprintf("-------> resched: pid = %d, frame id = %d\n", currpid, i);
+	// 			free_frm(i);
+	// 		}
+	// 	}
+	// }
 
 	/* force context switch */
 
@@ -82,6 +133,17 @@ int	resched()
 #ifdef	DEBUG
 	PrintSaved(nptr);
 #endif
+	if (nptr->store == 8) {
+		int i;
+		for (i = 0; i < NFRAMES; ++i) {
+			if (frm_tab[i].fr_status == FRM_MAPPED && frm_tab[i].fr_pid == currpid && frm_tab[i].fr_type == FR_PAGE) {
+				int store;
+				int pageth;
+				bsm_lookup(currpid, frm_tab[i].fr_vpno * NBPG, &store, &pageth);
+				read_bs((FRAME0 + i) * NBPG, store, pageth);
+			}
+		}
+	}
 	// write value to cr3
 	write_cr3(nptr->pdbr);
 	ctxsw(&optr->pesp, optr->pirmask, &nptr->pesp, nptr->pirmask);

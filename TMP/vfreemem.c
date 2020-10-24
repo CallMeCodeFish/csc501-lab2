@@ -18,9 +18,17 @@ SYSCALL	vfreemem(block, size)
 	struct	mblock	*p, *q;
 	unsigned top;
 
-	if (size==0 || (unsigned)block>(unsigned)maxaddr
-	    || ((unsigned)block)<((unsigned) &end))
-		return(SYSERR);
+	// if (size==0 || (unsigned)block>(unsigned)maxaddr
+	//     || ((unsigned)block)<((unsigned) &end)) {
+	// 		kprintf(">>> point -1\n");
+	// 		return(SYSERR);
+	// 	}
+
+	if (size==0 || ((unsigned)block)<((unsigned) &end)) {
+			// kprintf(">>> point -1\n");
+			return(SYSERR);
+	}
+		
 	size = (unsigned)roundmb(size);
 	disable(ps);
 
@@ -28,6 +36,7 @@ SYSCALL	vfreemem(block, size)
 
 	struct mblock *vmemlist;
 	vmemlist = proctab[pid].vmemlist;
+	// kprintf(">>> point 0\n");
 
 	for( p=vmemlist->mnext,q= vmemlist;
 	     p != (struct mblock *) NULL && p < block ;
@@ -35,21 +44,26 @@ SYSCALL	vfreemem(block, size)
 		;
 	if (((top=q->mlen+(unsigned)q)>(unsigned)block && q!= vmemlist) ||
 	    (p!=NULL && (size+(unsigned)block) > (unsigned)p )) {
+			// kprintf(">>> point 1\n");
 		restore(ps);
 		return(SYSERR);
 	}
-	if ( q!= vmemlist && top == (unsigned)block )
-			q->mlen += size;
-	else {
+	if ( q!= vmemlist && top == (unsigned)block ) {
+		// kprintf(">>> point 2\n");
+		q->mlen += size;
+	} else {
+		// kprintf(">>> point 3\n");
 		block->mlen = size;
 		block->mnext = p;
 		q->mnext = block;
 		q = block;
 	}
 	if ( (unsigned)( q->mlen + (unsigned)q ) == (unsigned)p) {
+		// kprintf(">>> point 4\n");
 		q->mlen += p->mlen;
 		q->mnext = p->mnext;
 	}
+	// kprintf(">>> point 5\n");
 	restore(ps);
 	return(OK);
 }

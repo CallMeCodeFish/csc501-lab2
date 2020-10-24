@@ -213,6 +213,11 @@ sysinit()
 
 	rdytail = 1 + (rdyhead=newqueue());/* initialize ready list */
 
+	//set protab fields related to paging
+	proctab[NULLPROC].store = -1;
+    proctab[NULLPROC].vhpno = 0;
+	proctab[NULLPROC].vhpnpages = 0;
+
 	//seg segments
 	setsegs();
 
@@ -228,8 +233,7 @@ sysinit()
 	// initialize the frame queue
 	init_frm_queue();
 
-	// set the ISR
-	set_evec(14, (u_long) pfintr);
+	
 
 	// create the first four global page tables
 	for (i = 0; i < 4; ++i) {
@@ -267,6 +271,9 @@ sysinit()
 
 	// write CR3 register for NULL user
 	write_cr3(proctab[NULLPROC].pdbr);
+
+	// set the ISR
+	set_evec(14, (u_long) pfintr);
 
 	// enable paging
 	enable_paging();

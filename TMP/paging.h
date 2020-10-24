@@ -46,7 +46,7 @@ typedef struct{
 #define MAX_NUM_BS 8
 #define MAX_BS_PAGES 256
 #define BS_PRIVATE 1
-#define BS_NONPRIVATE 0;
+#define BS_NONPRIVATE 0
 
 typedef struct __bs_map_list_t{
   int bs_pid;
@@ -105,7 +105,7 @@ SYSCALL write_bs(char *, bsd_t, int);
 SYSCALL init_bsm();
 SYSCALL get_bsm(int*);
 SYSCALL free_bsm(int);
-SYSCALL bsm_lookup(int, long, int*, int*);
+SYSCALL bsm_lookup(int, unsigned long, int*, int*);
 SYSCALL bsm_map(int, int, int, int);
 SYSCALL bsm_unmap(int, int, int);
 void add_list_node(int, int, int, int);
@@ -123,7 +123,7 @@ int get_frm_by_Aging();
 void reset_frm_entry(int);
 pt_t * get_pt_entry(int, int);
 pd_t * get_pd_entry(int, int);
-int get_pt_fr_index(int, int);
+unsigned int get_pt_fr_index(int, int);
 
 /* allocate page directory for a process */
 void allocate_page_directory(int);
@@ -136,6 +136,7 @@ SYSCALL grpolicy();
 fr_map_t frm_qdummy;
 fr_map_t *frm_qhead;
 fr_map_t *frm_qtail;
+fr_map_t *sc_dummy;
 
 #define NBPG		4096	/* number of bytes per page	*/
 #define FRAME0		1024	/* zero-th frame		*/

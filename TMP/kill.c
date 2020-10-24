@@ -39,7 +39,40 @@ SYSCALL kill(int pid)
         }
     }
 
-	// kprintf("进入kill!! pid = %d\n", pid);
+	// free bsm tab
+	if (proctab[pid].store != -1) {
+		if (proctab[pid].store != 8) {
+			//private
+			bsm_unmap(pid, proctab[pid].vhpno, 0);
+			free_bsm(proctab[pid].store);
+		} else {
+			//public
+			int j;
+			bs_map_list_t *curr;
+			for (j = 0; j < MAX_NUM_BS; ++j) {
+				if (bsm_tab[j].bs_status == BSM_MAPPED && bsm_tab[j].bs_private == BS_NONPRIVATE) {
+					curr = bsm_tab[j].bs_lhead->bs_next;
+					while (curr != NULL) {
+						if (curr->bs_pid == pid) {
+							// kprintf(">>>point A\n");
+							bsm_unmap(pid, curr->bs_vpno, 0);
+							free_bsm(j);
+							break;
+						}
+						curr = curr->bs_next;
+					}
+				}
+			}
+			proctab[pid].store = -1;
+			proctab[pid].vhpno = 0;
+			proctab[pid].vhpnpages = 0;
+			// kprintf(">>>point B\n");
+		}
+		
+	}
+	
+
+	// kprintf("进入kill!! pid = %d, 当前pid = %d\n", pid, currpid);
 	if (isbadpid(pid) || (pptr= &proctab[pid])->pstate==PRFREE) {
 		restore(ps);
 		return(SYSERR);
