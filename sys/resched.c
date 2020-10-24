@@ -76,6 +76,10 @@ int	resched()
 					write_bs((FRAME0 + i) * NBPG, store, pageth);
 					pt_entry->pt_dirty = 0;
 				}
+				if (grpolicy() == AGING &&optr->pstate == PRSLEEP) {
+					//clear reference bit
+					pt_entry->pt_acc = 0;
+				}
 			}
 		}
 	}

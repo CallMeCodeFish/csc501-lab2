@@ -660,7 +660,7 @@ void test_func8()
 		int cnt = 0;
 
 		//can go up to  (NFRAMES - 5 frames for null prc - 1pd for main - 1pd + 1pt frames for this proc)
-		int maxpage = (NFRAMES - (5 + 1 + 1 + 1)); //=1016
+		int maxpage = (NFRAMES - (5 + 1 + 1 + 1)); //=1016 + 1024
         //int maxpage = (NFRAMES - 25);
 
 
@@ -685,7 +685,7 @@ void test_func8()
 		/* all of these should generate page fault, no page replacement yet
 		   acquire all free frames, starting from 1032 to 2047, lower frames are acquired first
 		   */
-		for(i=0; i < maxpage; i++)
+		for(i=0; i < maxpage; i++) //  0-1015
 		{
 				*((int *)addrs[i]) = i + 1;  //bring all pages in, only referece bits are set
 
@@ -695,16 +695,19 @@ void test_func8()
 
 		disable(ps); //reduce the possibility of trigger reference bit clearing routine while testing
 
-		for(i=0; i < maxpage/2; i++)
+		for(i=0; i < maxpage/2; i++) //1539
 		{
 				*((int *)addrs[i]) = i + 1; //set both ref bits and dirty bits for these pages
 		}
 
-        kprintf("\t 8.1 Expected replaced frame: %d\n\t",1032+maxpage/2);
+		// kprintf(">>>>point 1\n");
+        kprintf("\t 8.1 Expected replaced frame: %d\n\t",1032+maxpage/2); //1540
 		enable(ps);  //to allow page fault
+		
 		// trigger page replace ment, expected output: frame 1032+maxpage/2=1540 will be swapped out
 		// this test might have a different result (with very very low possibility) if bit clearing routine is called before executing the following instruction
-		*((int *)addrs[maxpage]) = maxpage + 1;
+		
+		*((int *)addrs[maxpage]) = maxpage + 1; //1016
         temp = *((int *)addrs[maxpage]);
 		if (temp != maxpage +1)
 			kprintf("\tFAILED!\n");
@@ -712,11 +715,12 @@ void test_func8()
 		sleep(3); //after sleep, all reference bits should be cleared
 
 		disable(ps); //reduce the possibility of trigger reference bit clearing routine while testing
-
-		for(i=0; i < maxpage/3; i++)
+		// kprintf(">>>>point 2\n");
+		for(i=0; i < maxpage/3; i++) //1370
 		{
 				*((int *)addrs[i]) = i + 1; //set both ref bits and dirty bits for these pages
 		}
+		// kprintf(">>>>point 3\n");
 
         kprintf("\t 8.2 Expected replaced frame: %d\n\t",1032+maxpage/3);
 		enable(ps);  //to allow page fault
@@ -746,9 +750,10 @@ void test8(){
 	resume(pid1);
 	sleep(10);
 	kill(pid1);
-
+	// kprintf(">>> curr: %d\n", numproc);
     kprintf("\n\t Second run (test where killing process is handled correctly):\n");
 	pid1 = create(test_func8, 2000, 20, "test_func8", 0, NULL);
+	// kprintf(">>> curr: %d\n", numproc);
 	resume(pid1);
 	sleep(10);
 	kill(pid1);
@@ -817,29 +822,29 @@ int main() {
 
     // switch(s) {
         // case 1:
-    	   test1();
+    	//    test1();
         //    break;
         // case 2:
-    	   test2();
+    	//    test2();
         //    break;
         // case 3:
-    	   test3();
+    	//    test3();
         //    break;
         // case 4:
-    	   test4();
+    	//    test4();
         //    break;
         // case 5:
-    	   test5();
+    	//    test5();
         //    break;
         // case 6:
-    	   test6();
+    	//    test6();
         //    break;
         // case 7:
 		// print_frame_info();
-           test7();
+        //    test7();
         //    break;
         // case 8:
-        //    test8();
+           test8();
         //    break;
         // default:
         //    kprintf("No test selected\n");
