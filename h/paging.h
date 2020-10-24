@@ -123,7 +123,7 @@ int get_frm_by_Aging();
 void reset_frm_entry(int);
 pt_t * get_pt_entry(int, int);
 pd_t * get_pd_entry(int, int);
-int get_pt_fr_index(int, int);
+unsigned int get_pt_fr_index(int, int);
 
 /* allocate page directory for a process */
 void allocate_page_directory(int);
@@ -136,6 +136,7 @@ SYSCALL grpolicy();
 fr_map_t frm_qdummy;
 fr_map_t *frm_qhead;
 fr_map_t *frm_qtail;
+fr_map_t *sc_dummy;
 
 #define NBPG		4096	/* number of bytes per page	*/
 #define FRAME0		1024	/* zero-th frame		*/

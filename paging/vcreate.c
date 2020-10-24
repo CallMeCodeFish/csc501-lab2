@@ -100,7 +100,7 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
 	*--saddr = 0;		/* %edi */
 	*pushsp = pptr->pesp = (unsigned long)saddr;
 
-	allocate_page_directory(pid);
+	
 
 	// allocate backing store for to the process
 	int store;
@@ -114,6 +114,8 @@ SYSCALL vcreate(procaddr,ssize,hsize,priority,name,nargs,args)
 		restore(ps);
 		return SYSERR;
 	}
+
+	allocate_page_directory(pid);
 
 	// mark the backing store as private
 	bsm_tab[store].bs_private = BS_PRIVATE;

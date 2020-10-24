@@ -30,7 +30,11 @@ SYSCALL pfint()
     // kprintf("Illegal faulted address: 0x%08x for process id: %d\n", a, pid);
 
     // check if the faulted address is legal
-    if (vpno < proctab[pid].vhpno || vpno >= proctab[pid].vhpno + proctab[pid].vhpnpages) {
+    int store;
+    int pageth;
+
+    // if (vpno < proctab[pid].vhpno || vpno >= proctab[pid].vhpno + proctab[pid].vhpnpages) {
+    if (proctab[pid].store == -1 || bsm_lookup(pid, a, &store, &pageth) == SYSERR) {
         kprintf("Illegal faulted address: 0x%08x for process id: %d. The process will be killed!\n", a, pid);
         // if (canPrint == 1) {
         //     kprintf("Illegal faulted address: 0x%08x for process %d\n", a, pid);
@@ -74,8 +78,28 @@ SYSCALL pfint()
         pd_entry->pd_global = 0;
         pd_entry->pd_avail = 0;
         pd_entry->pd_base = FRAME0 + pt_frm_index;
+        // kprintf("&&&& gain= %d\n", pt_frm_index);
+
+        // set fields of pt table
+        pt_t * pt_entry;
+        pt_entry = (pt_t *) (pd_entry->pd_base * NBPG);
+        int i;
+        for (i = 0; i < NFRAMES; ++i) {
+            pt_entry[i].pt_pres = 0;
+			pt_entry[i].pt_write = 1;
+			pt_entry[i].pt_user = 0;
+			pt_entry[i].pt_pwt = 0;
+			pt_entry[i].pt_pcd = 0;
+			pt_entry[i].pt_acc = 0;
+			pt_entry[i].pt_dirty = 0;
+			pt_entry[i].pt_mbz = 0;
+			pt_entry[i].pt_global = 0;
+			pt_entry[i].pt_avail = 0;
+        }
+
     } else {
         pt_frm_index = pd_entry->pd_base - FRAME0;
+        // kprintf("---------here %d\n", pt_frm_index);
     }
 
     // kprintf("=====> <======\n");
@@ -85,9 +109,9 @@ SYSCALL pfint()
     get_frm(&pg_frm_index);
 
     // read data from the backing store
-    int store;
-    int pageth;
-    bsm_lookup(pid, a, &store, &pageth);
+    // int store;
+    // int pageth;
+    // bsm_lookup(pid, a, &store, &pageth);
     read_bs((char *) ((FRAME0 + pg_frm_index) * NBPG), store, pageth);
 
     // kprintf("=====> 11<======\n");
@@ -115,6 +139,8 @@ SYSCALL pfint()
     pt_entry->pt_base = FRAME0 + pg_frm_index;
 
     frm_tab[pt_frm_index].fr_refcnt++;
+
+    // kprintf("&&&& pt index: %d, count: %d\n", pt_frm_index, frm_tab[pt_frm_index].fr_refcnt);
     // kprintf("=====>33 <======\n");
 
     restore(ps);

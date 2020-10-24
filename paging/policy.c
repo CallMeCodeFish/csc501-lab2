@@ -21,6 +21,9 @@ SYSCALL srpolicy(int policy)
     }
 
     page_replace_policy = policy;
+    if (policy == SC) {
+      sc_dummy = frm_qhead;
+    }
 
     debug_option = 1;
 

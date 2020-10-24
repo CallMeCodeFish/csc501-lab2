@@ -228,10 +228,14 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
         }
     }
 
+    // kprintf(">>>point1\n");
+
     if (i == MAX_NUM_BS) {
         // cannot find the backing store
         return SYSERR;
     }
+
+    // kprintf(">>>point2\n");
 
     // kprintf(">>point 2.1.2\n");
 
@@ -247,6 +251,7 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
             && curr->bs_vpno <= frm_tab[j].fr_vpno && frm_tab[j].fr_vpno < curr->bs_vpno + curr->bs_npages) 
         {
             
+            // kprintf(">>>point3\n");
             free_frm(j);
             
         }
@@ -264,6 +269,7 @@ SYSCALL bsm_unmap(int pid, int vpno, int flag)
     }
 
     // kprintf(">>point 2.1.5\n");
+    // kprintf(">>>point4\n");
 
     return OK;
 }

@@ -184,6 +184,7 @@ void test3() {
 	for(i=0;i < MAX_BSTORE;i++){
 		pids[i] = create(proc1_test3, 2000, 20, "proc1_test3", 2, i,&ret);
 		if (pids[i] == SYSERR){
+			// kprintf("===>here\n");
 			ret = TFAILED;
 		}else{
 			resume(pids[i]);
@@ -196,7 +197,11 @@ void test3() {
 
 	// kprintf(">>> point A\n");
 	for(i=0;i < MAX_BSTORE;i++){
+		
+		// kprintf("test3: before: bs=%d, status=%d, is_private=%d\n", i, bsm_tab[i].bs_status, bsm_tab[i].bs_private);
+		// kprintf("pid=%d, store=%d\n", pids[i], proctab[pids[i]].store);
 		kill(pids[i]);
+		// kprintf("test3: after: bs=%d, status=%d, is_private=%d\n", i, bsm_tab[i].bs_status, bsm_tab[i].bs_private);
 	}
 	// kprintf(">>> point B\n");
 	if (ret != TPASSED)
@@ -233,15 +238,28 @@ void proc1_test4(int* ret) {
 
 	// kprintf(">>point1\n");
 
+	// // check data using physical address
+	// addr = (FRAME0 + NFRAMES + MYBS1 * MAX_BS_PAGES) * NBPG;
+	// kprintf("===>checking data! addr = 0x%08x\n", addr);
+	// int j;
+	// for (j = 0; j < 26; ++j) {
+	// 	kprintf("read: j = %d, value = %c\n", j, *(addr + j * NBPG));
+	// }
+
+	// print_frame_info();
+
+	// addr = (char*) MYVADDR1;
+
 	/*Shoud see what proc 2 updated*/
 	for (i = 0; i < 26; i++) {
 		/*expected output is abcde.....*/
 		if (*(addr + i * NBPG) != 'a'+i){
 			// kprintf("===>proc 1 read error\n");
+			kprintf("addr = 0x%08x, i = %d, value = %d\n", (addr + i * NBPG), i, *(addr + i * NBPG));
 			*ret = TFAILED;
 			break;
 		}
-		//kprintf("0x%08x: %c\n", addr + i * NBPG, *(addr + i * NBPG));
+		// kprintf("0x%08x: %c\n", addr + i * NBPG, *(addr + i * NBPG));
 	}
 
 	// kprintf(">>point2\n");
@@ -279,7 +297,7 @@ void proc2_test4(int *ret) {
 	// // check the mapping of the bsm
 	// bs_map_list_t * cur = bsm_tab[MYBS1].bs_lhead->bs_next;
 	// while (cur != NULL) {
-	// 	kprintf("===>打印: pid = %d, vpno = 0x%08x\n", cur->bs_pid, cur->bs_vpno);
+	// 	kprintf("===>proc2 打印: pid = %d, vpno = 0x%08x\n", cur->bs_pid, cur->bs_vpno);
 	// 	cur = cur->bs_next;
 	// }
 
@@ -296,9 +314,9 @@ void proc2_test4(int *ret) {
 		/*expected output is ABCDEF.....*/
 		// kprintf("in loop\n");
 		if (*(addr + i * NBPG) != 'A'+i){
-			// kprintf("====>not the same\n");
-			// kprintf("addr = 0x%08x, i = %d, value = %c\n", (addr + i * NBPG), i, *(addr + i * NBPG));
 			// kprintf("===>proc 2 read error\n");
+			kprintf("addr = 0x%08x, i = %d, value = %d\n", (addr + i * NBPG), i, *(addr + i * NBPG));
+			
 			*ret = TFAILED;
 			break;
 		}
@@ -548,10 +566,35 @@ void test_func7()
 		/* all of these should generate page fault, no page replacement yet
 		   acquire all free frames, starting from 1032 to 2047, lower frames are acquired first
 		   */
+
+		// kprintf("-----------------\n");
+		// print_frame_info();
+		// kprintf(">>>> point 1\n");
 		for(i=0; i < maxpage; i++)
 		{
-				*((int *)addrs[i]) = i + 1;
+			// kprintf("	i = %d\n", i);
+			// unsigned int addr = addrs[i];
+			// kprintf("	>>> vpno = %d\n", addr/ NBPG);
+			// kprintf("		>>> point 3\n");
+			*((int *)addrs[i]) = i + 1;
+			// kprintf("		>>>point 4\n");
 		}
+		// kprintf(">>>> point 2\n");
+
+		// kprintf("-----------------\n");
+		// print_frame_info();
+		// print_vpno_info(currpid);
+		// kprintf("-----------------\n");
+		// pt_t *pt_entry;
+		// for (i = 0; i < maxpage; ++i) {
+		// 	unsigned int addr = addrs[i];
+		// 	int vpno = addr / NBPG;
+		// 	pt_entry = get_pt_entry(currpid, vpno);
+		// 	if (pt_entry->pt_pres == 1) {
+		// 		kprintf("pt_entry: vpno = %d\n");
+		// 	}
+			
+		// }
 
 		//trigger page replacement, this should clear all access bits of all pages
 		//expected output: frame 1032 will be swapped out
@@ -739,9 +782,28 @@ void mytest() {
 		}
 }
 
+void print_frame_info() {
+	fr_map_t *curr = frm_qhead->fr_next;
+	while (curr != NULL) {
+		kprintf("frame %d, pid %d, type %d, process name %s\n", curr->fr_index + FRAME0, curr->fr_pid, curr->fr_type, proctab[curr->fr_pid].pname);
+		curr = curr->fr_next;
+	}
+}
+
+void print_vpno_info(int pid) {
+	fr_map_t *curr = frm_qhead->fr_next;
+	while (curr != NULL) {
+		if (curr->fr_type == FR_PAGE) {
+			kprintf("frame %d: vpno %d\n", curr->fr_index + FRAME0,curr->fr_vpno);
+		}
+		
+		curr = curr->fr_next;
+	}
+}
+
 int main() {
 	// shutdown();
-    int i, s;
+    // int i, s;
     char buf[8];
 
 	kprintf("\n\nHello World, Xinu lives\n\n");
@@ -755,25 +817,25 @@ int main() {
 
     // switch(s) {
         // case 1:
-    	//    test1();
+    	   test1();
         //    break;
         // case 2:
-    	//    test2();
+    	   test2();
         //    break;
         // case 3:
-    	//    test3();
+    	   test3();
         //    break;
         // case 4:
-    	//    test4();
-		
+    	   test4();
         //    break;
         // case 5:
-    	//    test5();
+    	   test5();
         //    break;
         // case 6:
-    	//    test6();
+    	   test6();
         //    break;
         // case 7:
+		// print_frame_info();
            test7();
         //    break;
         // case 8:
@@ -782,7 +844,6 @@ int main() {
         // default:
         //    kprintf("No test selected\n");
     // }
-
 
     shutdown();
 }

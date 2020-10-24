@@ -23,11 +23,12 @@ int get_bs(bsd_t bs_id, unsigned int npages) {
     if (bsm_tab[bs_id].bs_status == BSM_MAPPED) {
         // kprintf("==>mapped\n");
         npages = bsm_tab[bs_id].bs_npages;
-    } else {
-        // kprintf("====>unmapped\n");
-        bsm_tab[bs_id].bs_status = BSM_MAPPED;
-        bsm_tab[bs_id].bs_npages = npages;
-    }
+    } 
+    // else {
+    //     // kprintf("====>unmapped\n");
+    //     bsm_tab[bs_id].bs_status = BSM_MAPPED;
+    //     bsm_tab[bs_id].bs_npages = npages;
+    // }
 
     restore(ps);
     return npages;

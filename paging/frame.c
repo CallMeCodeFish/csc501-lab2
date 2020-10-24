@@ -47,12 +47,15 @@ SYSCALL get_frm(int* avail)
         *avail = get_frm_by_Aging();
     }
 
+    // if (*avail == 5) {
+    //     kprintf("!!!!!!!!!error\n");
+    // }
     free_frm(*avail);
     frm_enqueue(*avail);
 
     // print the evicted page
     if (debug_option == 1) {
-        kprintf("Frame evicted: %d\n", *avail);
+        kprintf("Frame evicted: %d\n", *avail + FRAME0);
     }
 
     restore(ps);
@@ -65,9 +68,19 @@ SYSCALL get_frm(int* avail)
  */
 SYSCALL free_frm(int i)
 {
-    // kprintf(">>>point A\n");
     pt_t *pt_entry = get_pt_entry(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
-    // kprintf(">>>point B\n");
+
+    pt_entry->pt_pres = 0;
+
+    int pt_fr_index = get_pt_fr_index(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
+
+    if (--frm_tab[pt_fr_index].fr_refcnt == 0) {
+        // revoke the frame containing the page table
+        frm_remove(pt_fr_index);
+        reset_frm_entry(pt_fr_index);
+        pd_t * pd_entry = get_pd_entry(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
+        pd_entry->pd_pres = 0;
+    }
 
     if (pt_entry->pt_dirty == 1) {
         // write back to the backing store
@@ -112,17 +125,9 @@ SYSCALL free_frm(int i)
     frm_remove(i);
     reset_frm_entry(i);
 
-    pt_entry->pt_pres = 0;
     
-    int pt_fr_index = get_pt_fr_index(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
-    if (--frm_tab[pt_fr_index].fr_refcnt == 0) {
-        // kprintf("======> free a page table frame: %d\n", pt_fr_index);
-        // revoke the frame containing the page table
-        frm_remove(pt_fr_index);
-        reset_frm_entry(pt_fr_index);
-        pd_t * pd_entry = get_pd_entry(frm_tab[i].fr_pid, frm_tab[i].fr_vpno);
-        pd_entry->pd_pres = 0;
-    }
+
+    // kprintf(">>>point 4\n");
 
     // kprintf(">>>point D\n");
 
@@ -160,16 +165,33 @@ void init_frm_queue() {
 
 // frame enqueue
 void frm_enqueue(int i) {
+    // if (i == 5) {
+    //     kprintf("############frame 35 enqueue!!\n");
+    // }
     frm_qtail->fr_next = &frm_tab[i];
     frm_qtail = frm_qtail->fr_next;
+    // if (i == 5) {
+    //     kprintf("*******\n");
+    //     fr_map_t *curr = frm_qhead->fr_next;
+    //     while (curr != NULL) {
+    //         kprintf("   fid: %d, pid: %d\n", curr->fr_index, curr->fr_pid);
+    //         curr = curr->fr_next;
+    //     }
+    //     kprintf("*******\n");
+    // }
 }
 
 // remove the i-th frame from the queue
 void frm_remove(int i) {
+    // kprintf(">>>>> frame remove: no=%d, pid=%d, type=%d\n", frm_tab[i].fr_index, frm_tab[i].fr_pid, frm_tab[i].fr_type);
+
+    // if (i == 5) {
+    //     kprintf("#############frame 35 remove!!\n");
+    // }
     fr_map_t *p = frm_qhead;
     fr_map_t *q = p->fr_next;
 
-    while (p->fr_next != NULL) {
+    while (q != NULL) {
         if (q->fr_index == i) {
             break;
         }
@@ -187,47 +209,88 @@ void frm_remove(int i) {
 
 // get a free frame using SC replacement policy
 int get_frm_by_SC() {
-    fr_map_t *p = frm_qhead;
-    fr_map_t *q = p->fr_next;
+    // fr_map_t *p = frm_qhead;
+    // fr_map_t *q = p->fr_next;
+    // fr_map_t *res = NULL;
+    fr_map_t *curr = NULL;
+    fr_map_t *start = sc_dummy;
 
     int canFind = 0;
     pt_t *pt_entry;
 
     // first traversal
-    while (p->fr_next != NULL) {
-        if (q->fr_type == FR_PAGE) {
-            pt_entry = get_pt_entry(q->fr_pid, q->fr_vpno);
+    while (1) {
+        curr = sc_dummy->fr_next;
+        if (curr->fr_type == FR_PAGE) {
+            pt_entry = get_pt_entry(curr->fr_pid, curr->fr_vpno);
             if (pt_entry->pt_acc == 0) {
                 canFind = 1;
                 break;
             } else {
-                // kprintf("==========> acc: %d\n", q->fr_index);
                 pt_entry->pt_acc = 0;
-                p = q;
-                q = q->fr_next;
             }
-        } else {
-            p = q;
-            q = q->fr_next;
+            
+        }
+        sc_dummy = sc_dummy->fr_next;
+        if (sc_dummy->fr_next == NULL) {
+            sc_dummy = frm_qhead;
+        }
+        if (sc_dummy == start) {
+            break;
         }
     }
+
+    // while (p->fr_next != NULL) {
+    //     if (q->fr_type == FR_PAGE) {
+    //         pt_entry = get_pt_entry(q->fr_pid, q->fr_vpno);
+    //         if (pt_entry->pt_acc == 0) {
+    //             if (res == NULL) {
+    //                 res = q;
+    //             }
+    //             // break;
+    //         } else {
+    //             // kprintf("==========> acc: %d\n", q->fr_index);
+    //             pt_entry->pt_acc = 0;
+    //         }
+            
+    //     } 
+    //     // else {
+    //     //     p = q;
+    //     //     q = q->fr_next;
+    //     // }
+    //     p = q;
+    //     q = q->fr_next;
+    // }
 
     if (canFind == 0) {
         // second traversal
-        p = frm_qhead;
-        q = p->fr_next;
-        while (p->fr_next != NULL) {
-            if (q->fr_type == FR_PAGE) {
-                pt_entry = get_pt_entry(q->fr_pid, q->fr_vpno);
+        while (1) {
+            curr = sc_dummy->fr_next;
+            if (curr->fr_type == FR_PAGE) {
+                // pt_entry = get_pt_entry(q->fr_pid, q->fr_vpno);
                 break;
-            } else {
-                p = q;
-                q = q->fr_next;
             }
+            sc_dummy = sc_dummy->fr_next;
         }
+
+
+
+
+        // p = frm_qhead;
+        // q = p->fr_next;
+        // while (p->fr_next != NULL) {
+        //     if (q->fr_type == FR_PAGE) {
+        //         // pt_entry = get_pt_entry(q->fr_pid, q->fr_vpno);
+        //         res = q;
+        //         break;
+        //     } else {
+        //         p = q;
+        //         q = q->fr_next;
+        //     }
+        // }
     }
 
-    return q->fr_index;
+    return curr->fr_index;
 }
 
 
@@ -302,16 +365,20 @@ pd_t * get_pd_entry(int pid, int vpno) {
     vaddr = (virt_addr_t *) &a;
     unsigned int pd_offset = vaddr->pd_offset;
 
-    int pdbr = proctab[pid].pdbr;
+    unsigned long pdbr = proctab[pid].pdbr;
 
     pd_t *pd_entry;
     pd_entry = (pd_t *) (pdbr + pd_offset * sizeof(pd_t));
+    unsigned long res = (unsigned long) pd_entry;
+    res /= NBPG;
+    // kprintf("-----------pd entry page: %d\n", res);
 
     return pd_entry;
 }
 
 // get the index of the physical frame
-int get_pt_fr_index(int pid, int vpno) {
+unsigned int get_pt_fr_index(int pid, int vpno) {
+    // kprintf("))))))) get_pt_fr_index\n");
     pd_t *pd_entry = get_pd_entry(pid, vpno);
 
     return pd_entry->pd_base - FRAME0;
