@@ -594,7 +594,8 @@ policy.o: ../TMP/policy.c /usr/include/stdc-predef.h ../h/conf.h \
 release_bs.o: ../TMP/release_bs.c /usr/include/stdc-predef.h ../h/conf.h \
  ../h/kernel.h ../h/systypes.h ../h/mem.h ../h/proc.h ../h/paging.h
 resched.o: ../TMP/resched.c /usr/include/stdc-predef.h ../h/conf.h \
- ../h/kernel.h ../h/systypes.h ../h/mem.h ../h/proc.h ../h/q.h
+ ../h/kernel.h ../h/systypes.h ../h/mem.h ../h/proc.h ../h/q.h \
+ ../h/paging.h
 vcreate.o: ../TMP/vcreate.c /usr/include/stdc-predef.h ../h/conf.h \
  ../h/i386.h ../h/kernel.h ../h/systypes.h ../h/mem.h ../h/proc.h \
  ../h/sem.h ../h/io.h ../h/paging.h
